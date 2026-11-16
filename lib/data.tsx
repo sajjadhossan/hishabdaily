@@ -534,9 +534,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return;
       }
       const { db } = await guardCloud();
-      await updateDoc(doc(db, "users", user!.uid, "contacts", id), patch);
+      const batch = writeBatch(db);
+      batch.update(doc(db, "users", user!.uid, "contacts", id), patch);
+      if (patch.name) {
+        data.debts
+          .filter((d) => d.contactId === id)
+          .forEach((d) =>
+            batch.update(doc(db, "users", user!.uid, "debts", d.id), {
+              contactName: patch.name,
+            }),
+          );
+      }
+      await batch.commit();
     },
-    [guardCloud, user],
+    [data.debts, guardCloud, user],
   );
 
   const removeContact = useCallback(
