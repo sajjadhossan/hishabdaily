@@ -100,7 +100,7 @@ export default function ContactsPage() {
               return (
                 <Link
                   key={c.id}
-                  href={`/contacts/${c.id}`}
+                  href={`/contacts/view?id=${encodeURIComponent(c.id)}`}
                   className="flex items-center gap-3 px-3.5 py-3 transition hover:bg-surface-2/60"
                 >
                   <span

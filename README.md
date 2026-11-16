@@ -178,6 +178,25 @@ firebase deploy --only firestore:rules
 
 ---
 
+## ☁️ Cloudflare Pages-এ স্থায়ী লিংক
+
+অ্যাপটি পুরোপুরি ক্লায়েন্ট-সাইড, তাই Cloudflare Pages-এ স্ট্যাটিক আকারে হোস্ট করা যায় —
+ফলাফল: **`https://hishab.pages.dev`** ধরনের স্থায়ী লিংক (ফ্রি)।
+
+```bash
+pnpm build:pages                      # out/ ফোল্ডার তৈরি হবে
+CLOUDFLARE_API_TOKEN=xxxx pnpm deploy:pages
+```
+
+- টোকেন বানান: [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens)
+  → **Create Token** → **Edit Cloudflare Workers** টেমপ্লেট, অথবা কাস্টম টোকেনে
+  **Account → Cloudflare Pages → Edit** অনুমতি দিন।
+- প্রথমবার চালালে `hishab` নামে প্রজেক্ট তৈরি হয়, এরপর প্রতিবার একই লিংকে নতুন বিল্ড যায়।
+- অন্য নাম চাইলে: `PAGES_PROJECT=my-app pnpm deploy:pages`
+- টোকেন শুধু ওই এক কমান্ডেই লাগে; কোথাও সেভ হয় না।
+
+---
+
 ## 📁 প্রজেক্ট কাঠামো
 
 ```

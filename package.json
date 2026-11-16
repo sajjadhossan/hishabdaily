@@ -9,6 +9,8 @@
     "start": "node scripts/next.cjs start",
     "preview": "node scripts/preview.cjs",
     "preview:build": "node scripts/preview.cjs --build",
+    "build:pages": "STATIC_EXPORT=1 node scripts/next.cjs build",
+    "deploy:pages": "node scripts/deploy-pages.cjs",
     "lint": "next lint"
   },
   "dependencies": {

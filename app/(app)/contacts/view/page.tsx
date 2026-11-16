@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowLeft,
@@ -40,8 +40,24 @@ const KIND_META: Record<
 };
 
 export default function ContactDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  return (
+    <Suspense
+      fallback={
+        <div className="pt-6">
+          <Card>
+            <EmptyState icon={HandCoins} title="লোড হচ্ছে…" />
+          </Card>
+        </div>
+      }
+    >
+      <ContactDetailView />
+    </Suspense>
+  );
+}
+
+function ContactDetailView() {
+  const params = useSearchParams();
+  const id = params.get("id") ?? "";
   const router = useRouter();
   const { contacts, debts, settings, removeContact, removeDebt, ready } = useData();
   const toast = useToast();
