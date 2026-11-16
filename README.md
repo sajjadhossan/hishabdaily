@@ -1,0 +1,244 @@
+# হিসাব (Hishab)
+
+> আয়-ব্যয়, নিয়মিত কেনাকাটা আর দেনা-পাওনার সহজ, সুন্দর ও নিরাপদ ট্র্যাকার।
+> Next.js + Firebase + Google Drive ব্যাকআপ — Vercel-এ এক ক্লিকে ডিপ্লয় করার জন্য তৈরি।
+
+![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
+![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-ffca28?logo=firebase)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+---
+
+## ✨ ফিচার
+
+| | |
+|---|---|
+| 💰 **আয়-ব্যয়** | খরচ ও আয় আলাদা করে লিখুন, খাত ও অ্যাকাউন্ট (ক্যাশ/বিকাশ/ব্যাংক) বেছে নিন |
+| ⚡ **নিয়মিত কেনাকাটা** | প্রতিদিনের চা, রিকশা, বাজার — একবার সেভ করে রাখুন, পরে **এক ট্যাপেই** লেনদেন যোগ |
+| 🤝 **দেনা-পাওনা** | কে কত পাবেন/দেবেন আলাদা খাতায়; টাকা দেওয়া, নেওয়া, ফেরত পাওয়া, শোধ করা — সব এন্ট্রি |
+| 📊 **রিপোর্ট** | মাসিক/বাৎসরিক সারসংক্ষেপ, খাতভিত্তিক বিশ্লেষণ, অ্যাকাউন্টভিত্তিক খরচ, বাজেটের অবস্থা |
+| 🎯 **মাসিক বাজেট** | বাজেট সেট করলে ড্যাশবোর্ডেই অগ্রগতি দেখা যায় |
+| 🔐 **লগইন** | Google দিয়ে এক ক্লিক সাইন-ইন + ইমেইল/পাসওয়ার্ড, সাইন আপ, পাসওয়ার্ড রিসেট |
+| ☁️ **ক্লাউড সিঙ্ক** | Firestore-এ রিয়েল-টাইম সিঙ্ক — ফোন ও কম্পিউটারে একই ডেটা |
+| 💾 **Google Drive ব্যাকআপ** | JSON ব্যাকআপ Drive-এ, দিনে একবার অটো-ব্যাকআপ, এক ক্লিকে রিস্টোর |
+| 📱 **PWA** | ফোনের হোম স্ক্রিনে অ্যাপের মতো ইনস্টল করা যায় |
+| 🌗 **ডার্ক মোড** | লাইট/ডার্ক/সিস্টেম + বাংলা সংখ্যায় দেখানোর অপশন |
+| 📤 **রপ্তানি** | CSV (Excel/Sheets) ও JSON ফাইল ডাউনলোড |
+
+---
+
+## 🧱 টেক স্ট্যাক
+
+- **Next.js 14** (App Router) + TypeScript + Tailwind CSS
+- **Firebase**: Authentication (Google, Email/Password) + Cloud Firestore (offline persistence)
+- **Google Drive API** (`drive.file` স্কোপ) — শুধু অ্যাপের নিজের তৈরি ব্যাকআপ ফাইল দেখতে পারে
+- **Vercel**-এ ডিপ্লয় করার জন্য প্রস্তুত
+
+---
+
+## 🚀 লোকাল সেটআপ
+
+```bash
+pnpm install      # বা: npm install
+cp .env.example .env.local
+pnpm dev          # http://localhost:3000
+```
+
+> Firebase কনফিগ না দিয়েও **ডেমো মোডে** অ্যাপটি চালিয়ে দেখতে পারবেন — লগইন পেজে
+> “ডেমো মোড” বাটনে চাপুন। ডেটা শুধু ব্রাউজারে (localStorage) থাকবে।
+
+---
+
+## 🔥 Firebase সেটআপ (ধাপে ধাপে)
+
+1. [Firebase Console](https://console.firebase.google.com) → **Add project** → নাম দিন।
+2. **Build → Authentication → Get started**
+   - **Google** চালু করুন (support email দিন)।
+   - **Email/Password** চালু করুন।
+3. **Build → Firestore Database → Create database** (Production mode) → লোকেশন বেছে নিন।
+4. **Firestore → Rules** ট্যাবে `firestore.rules` ফাইলের নিয়ম পেস্ট করে **Publish** করুন:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+         match /{collection}/{docId} {
+           allow read, write: if request.auth != null && request.auth.uid == uid;
+         }
+       }
+     }
+   }
+   ```
+
+5. **Project settings (⚙️) → Your apps → Web (`</>`)** → অ্যাপ রেজিস্টার করুন →
+   `firebaseConfig` অবজেক্টটি কপি করুন।
+6. কনফিগ বসানোর **তিনটি উপায়** (যেকোনো একটি):
+
+   **ক) env ভেরিয়েবল (সুপারিশকৃত — Vercel/localhost)**
+   ```env
+   NEXT_PUBLIC_FIREBASE_API_KEY=...
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-app.firebaseapp.com
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-app
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-app.appspot.com
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+   NEXT_PUBLIC_FIREBASE_APP_ID=...
+   ```
+
+   **খ) অ্যাপের ভেতর থেকেই** — `/setup` পেজে গিয়ে পুরো `firebaseConfig`
+   অবজেক্ট পেস্ট করুন (ব্রাউজারে সেভ হবে)। ডিপ্লয়ের পর সাধারণ ব্যবহারকারীর জন্য
+   সবচেয়ে সহজ উপায়।
+
+   **গ) `public/firebase-config.json`** — `public/firebase-config.example.json`
+   কপি করে আসল মান বসান (রিবিল্ড ছাড়াই বদলানো যায়)।
+
+7. **Authentication → Settings → Authorized domains**-এ আপনার ডোমেইন যোগ করুন
+   (`localhost` সাধারণত থাকে; Vercel-এর `your-app.vercel.app` যোগ করতে হবে)।
+
+> ⚠️ Firebase API key পাবলিক থাকা স্বাভাবিক — নিরাপত্তা আসে **Firestore Rules** থেকে।
+> উপরের নিয়ম ছাড়া ডেটা পাবলিক হয়ে যেতে পারে, তাই অবশ্যই বসাবেন।
+
+---
+
+## ☁️ Google Drive ব্যাকআপ সেটআপ
+
+1. [Google Cloud Console](https://console.cloud.google.com) → উপরের Firebase প্রজেক্টটিই বেছে নিন।
+2. **APIs & Services → Library → Google Drive API → Enable**।
+3. **APIs & Services → OAuth consent screen**
+   - User type: **External** → অ্যাপের নাম/সাপোর্ট ইমেইল দিন।
+   - **Scopes → Add or remove scopes** → `https://www.googleapis.com/auth/drive.file` যোগ করুন।
+   - **Test users**-এ নিজের Gmail যোগ করুন (অ্যাপ Testing-এ থাকলে)।
+4. **APIs & Services → Credentials → Create credentials → OAuth client ID**
+   - Application type: **Web application**
+   - **Authorized JavaScript origins**:
+     - `http://localhost:3000`
+     - `https://your-app.vercel.app`
+   - Redirect URI লাগবে না (Google Identity Services ব্যবহার করা হয়েছে)।
+5. Client ID কপি করে বসান:
+   - env: `NEXT_PUBLIC_GOOGLE_CLIENT_ID=...`
+   - অথবা `/setup` পেজের “Google Client ID” ঘরে।
+
+> `drive.file` স্কোপের কারণে অ্যাপ শুধু নিজের তৈরি “Hishab Backups” ফোল্ডারের
+> ফাইল পড়তে/লিখতে পারে — আপনার Drive-এর বাকি কিছুই দেখতে পায় না।
+> Testing মোডে থাকলে টোকেন ৭ দিনে expire হতে পারে; দীর্ঘমেয়াদে **Publish app** করুন।
+
+---
+
+## ▲ Vercel-এ ডিপ্লয়
+
+### ১) GitHub-এ আপলোড
+
+```bash
+git init
+git add .
+git commit -m "feat: hishab expense tracker"
+git branch -M main
+git remote add origin https://github.com/<username>/hishab.git
+git push -u origin main
+```
+
+### ২) Vercel
+
+1. [vercel.com/new](https://vercel.com/new) → **Import Git Repository** → রিপো চয়ন করুন।
+2. Framework: **Next.js** (স্বয়ংক্রিয়ভাবে ধরা পড়বে)।
+3. **Environment Variables**-এ `.env.example`-এর সব ভেরিয়েবল যোগ করুন
+   (Build & Production দুটোতেই)।
+4. **Deploy** চাপুন।
+5. ডিপ্লয় শেষে Vercel ডোমেইনটি Firebase **Authorized domains** ও Google OAuth
+   **Authorized JavaScript origins**-এ যোগ করুন।
+6. (ঐচ্ছিক) `firebase-config.json` পদ্ধতি ব্যবহার করলে সেটি `public/`-এ রাখুন —
+   রিবিল্ড ছাড়াই কনফিগ বদলানো যাবে।
+
+### Firebase CLI দিয়ে নিয়ম ডিপ্লয় (ঐচ্ছিক)
+
+```bash
+npm i -g firebase-tools
+firebase login
+firebase use --add        # আপনার প্রজেক্ট বেছে নিন
+firebase deploy --only firestore:rules
+```
+
+---
+
+## 📁 প্রজেক্ট কাঠামো
+
+```
+app/
+  (app)/                 # লগইন-প্রোটেক্টেড পেজ
+    dashboard/           # হোম — ব্যালেন্স, চার্ট, দ্রুত যোগ
+    transactions/        # সব লেনদেন, সার্চ ও ফিল্টার
+    templates/           # নিয়মিত কেনাকাটা (এক ট্যাপ)
+    contacts/            # দেনা-পাওনা — ব্যক্তি ও লেজার
+    reports/             # মাসিক/বাৎসরিক রিপোর্ট
+    settings/            # প্রোফাইল, খাত, বাজেট, ব্যাকআপ
+  login/ signup/ forgot-password/ setup/
+components/              # UI, ফর্ম, চার্ট, শেল
+lib/
+  auth.tsx               # Firebase Auth + ডেমো মোড
+  data.tsx               # Firestore/localStorage ডেটা লেয়ার
+  drive.ts               # Google Drive ব্যাকআপ
+  stats.ts               # হিসাব-নিকাশ
+  types.ts / utils.ts
+firestore.rules          # নিরাপত্তা নিয়ম
+```
+
+### ডেটা মডেল (Firestore)
+
+```
+users/{uid}                                  → { settings: {...} }
+users/{uid}/transactions/{id}                → { type, amount, category, account, note, date, createdAt }
+users/{uid}/templates/{id}                   → { name, emoji, amount, category, account, uses, lastUsed }
+users/{uid}/contacts/{id}                    → { name, phone, note, createdAt }
+users/{uid}/debts/{id}                       → { contactId, contactName, kind, amount, note, date, txId? }
+```
+
+`debts.kind`: `lent` (দিয়েছি) · `borrowed` (নিয়েছি) · `lent_repaid` (ফেরত পেয়েছি) ·
+`borrowed_repaid` (ফেরত দিয়েছি)। ব্যালেন্স = `lent + borrowed_repaid − borrowed − lent_repaid`।
+
+---
+
+## 🧪 বিল্ড যাচাই
+
+```bash
+pnpm exec tsc --noEmit     # টাইপ চেক
+pnpm build                 # প্রোডাকশন বিল্ড
+```
+
+> 📱 **Termux/Android-এ বিল্ড:** Next.js-এর নেটিভ SWC বাইনারি Android-এর জন্য প্রকাশিত
+> হয় না। তাই `scripts/next.cjs` শুধু Android-এ WASM SWC (`@next/swc-wasm-nodejs`)
+> স্বয়ংক্রিয়ভাবে প্রিলোড করে। Vercel/Linux-এ এটি নিষ্ক্রিয় থাকে এবং সাধারণ নেটিভ
+> বাইনারি ব্যবহৃত হয় — আলাদা কিছু করতে হয় না। প্রথম বিল্ডে WASM প্যাকেজ ডাউনলোড
+> হতে একটু সময় লাগতে পারে।
+
+---
+
+## 🛠 সমস্যা ও সমাধান
+
+| সমস্যা | সমাধান |
+|---|---|
+| `auth/unauthorized-domain` | Firebase → Authentication → Settings → Authorized domains-এ ডোমেইন যোগ করুন |
+| `auth/operation-not-allowed` | Authentication-এ Google ও Email/Password চালু করুন |
+| Google পপআপ আটকে যাচ্ছে | ব্রাউজারের পপআপ অনুমতি দিন; মোবাইলে Chrome/Safari ব্যবহার করুন |
+| Firestore permission denied | `firestore.rules` পাবলিশ করুন (উপরে দেওয়া নিয়ম) |
+| Drive ব্যাকআপ কাজ করছে না | Drive API চালু, `drive.file` স্কোপ, OAuth JS origin ঠিক আছে কিনা দেখুন |
+| “Hishab Backups” ফোল্ডার দেখা যাচ্ছে না | Drive-এর সার্চে ফোল্ডারের নাম লিখে খুঁজুন (অ্যাপ-তৈরি ফাইল) |
+| পুরোনো ডেটা দেখাচ্ছে | সেটিংস → ডেটা → রিস্টোর, অথবা পেজ রিফ্রেশ করুন |
+
+---
+
+## 🔒 নিরাপত্তা
+
+- প্রতিটি ব্যবহারকারীর ডেটা `users/{uid}`-এর ভেতরে; Firestore Rules দিয়ে শুধু মালিকের
+  অ্যাক্সেস নিশ্চিত করা হয়।
+- Google Drive-এ শুধু `drive.file` স্কোপ — অ্যাপের তৈরি ফাইল ছাড়া কিছু পড়া/লেখা সম্ভব নয়।
+- Firebase API key ক্লায়েন্টে থাকা স্বাভাবিক; গোপন তথ্য (service account key) কখনো
+  `NEXT_PUBLIC_` ভেরিয়েবলে রাখবেন না।
+- ব্যাকআপে আপনার সব আর্থিক তথ্য থাকে — JSON ফাইলটি কারো সাথে শেয়ার করবেন না।
+
+---
+
+## 📄 লাইসেন্স
+
+MIT — ব্যক্তিগত ও বাণিজ্যিক ব্যবহারের জন্য মুক্ত।

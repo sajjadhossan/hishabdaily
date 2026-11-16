@@ -1,0 +1,61 @@
+{
+  "name": "হিসাব — আয়, ব্যয় ও দেনা-পাওনা",
+  "short_name": "হিসাব",
+  "description": "প্রতিদিনের খরচ, আয়, নিয়মিত কেনাকাটা আর দেনা-পাওনার সহজ হিসাব — Google Drive ব্যাকআপসহ।",
+  "id": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f6f9f7",
+  "theme_color": "#0c906a",
+  "lang": "bn",
+  "dir": "ltr",
+  "categories": ["finance", "productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "নতুন লেনদেন",
+      "short_name": "লেনদেন",
+      "url": "/transactions",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "নিয়মিত কেনাকাটা",
+      "short_name": "নিয়মিত",
+      "url": "/templates",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "দেনা-পাওনা",
+      "short_name": "দেনা",
+      "url": "/contacts",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
