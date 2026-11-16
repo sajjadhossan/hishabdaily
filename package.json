@@ -7,6 +7,8 @@
     "dev": "node scripts/next.cjs dev",
     "build": "node scripts/next.cjs build",
     "start": "node scripts/next.cjs start",
+    "preview": "node scripts/preview.cjs",
+    "preview:build": "node scripts/preview.cjs --build",
     "lint": "next lint"
   },
   "dependencies": {
