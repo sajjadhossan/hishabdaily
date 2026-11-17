@@ -40,7 +40,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          # Capacitor 8 / AGP 8.13-এ Java 21 লাগবে
+          java-version: '21'
           cache: gradle
 
       - name: Install
