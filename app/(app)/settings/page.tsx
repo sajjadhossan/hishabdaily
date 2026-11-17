@@ -49,6 +49,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useData } from "@/lib/data";
 import {
+  activeConfig,
   configFromEnv,
   configFromStorage,
   googleClientId,
@@ -103,6 +104,7 @@ export default function SettingsPage() {
     replaceAll,
     clearAllData,
     isLocal,
+    synced,
   } = useData();
   const toast = useToast();
 
@@ -721,6 +723,30 @@ export default function SettingsPage() {
               <Badge tone="warn">নিষ্ক্রিয়</Badge>
             )}
           </div>
+
+          {!isLocal ? (
+            <div className="flex items-start gap-3 p-4">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">
+                <RefreshCw className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-ink">
+                  ডেটা সিঙ্ক —{" "}
+                  <span className={synced ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                    {synced ? "চালু" : "অফলাইন"}
+                  </span>
+                </p>
+                <p className="text-[10.5px] leading-relaxed text-muted">
+                  প্রজেক্ট: {activeConfig()?.projectId || "—"} · একই অ্যাকাউন্টে অন্য
+                  ডিভাইস/ওয়েবসাইটে লগইন করলে ডেটা সাথে সাথে দেখা যাবে।
+                </p>
+                <p className="mt-1 text-[10.5px] text-muted">
+                  {transactions.length}টি লেনদেন · {contacts.length}জন ব্যক্তি ·{" "}
+                  {debts.length}টি দেনা-পাওনা · {templates.length}টি টেমপ্লেট
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           <Link
             href="/setup"

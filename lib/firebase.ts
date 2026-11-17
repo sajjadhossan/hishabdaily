@@ -98,8 +98,43 @@ async function fetchRuntimeConfig(): Promise<FirebaseConfig | null> {
   }
 }
 
+let activeConfigCache: FirebaseConfig | null = null;
+
 export async function resolveConfig(): Promise<FirebaseConfig | null> {
-  return configFromStorage() || configFromEnv() || (await fetchRuntimeConfig());
+  const cfg = configFromStorage() || configFromEnv() || (await fetchRuntimeConfig());
+  if (cfg) activeConfigCache = cfg;
+  return cfg;
+}
+
+/** এখন যে কনফিগ দিয়ে অ্যাপ চলছে (ডায়াগনস্টিকসে দেখানোর জন্য) */
+export function activeConfig(): FirebaseConfig | null {
+  return activeConfigCache || configFromEnv() || configFromStorage();
+}
+
+/** App Check-এর reCAPTCHA v3 সাইট-কী (থাকলে চালু হবে) */
+function appCheckSiteKey(): string | null {
+  if (typeof window !== "undefined") {
+    const stored = window.localStorage.getItem("hishab.recaptchaKey");
+    if (stored && stored.trim()) return stored.trim();
+  }
+  return process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || null;
+}
+
+let appCheckStarted = false;
+
+async function startAppCheck(app: FirebaseApp) {
+  const siteKey = appCheckSiteKey();
+  if (!siteKey || appCheckStarted) return;
+  appCheckStarted = true;
+  try {
+    const { initializeAppCheck, ReCaptchaV3Provider } = await import("firebase/app-check");
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(siteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn("App Check চালু করা যায়নি", err);
+  }
 }
 
 let servicesPromise: Promise<FirebaseServices | null> | null = null;
@@ -111,6 +146,7 @@ export function firebaseReady(): Promise<FirebaseServices | null> {
       if (!config) return null;
       try {
         const app = getApps().length ? getApp() : initializeApp(config);
+        void startAppCheck(app);
         const auth = getAuth(app);
         let db: Firestore;
         try {
