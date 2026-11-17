@@ -1,6 +1,10 @@
 packages:
   - "."
 
+overrides:
+  postcss: "^8.5.33"
+  "@grpc/grpc-js": "^1.13.6"
+
 allowBuilds:
   '@firebase/util': true
   protobufjs: true

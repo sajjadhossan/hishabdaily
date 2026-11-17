@@ -40,7 +40,7 @@
 
 ## 🧱 টেক স্ট্যাক
 
-- **Next.js 14** (App Router) + TypeScript + Tailwind CSS
+- **Next.js 15** (App Router) + TypeScript + Tailwind CSS
 - **Firebase**: Authentication (Google, Email/Password) + Cloud Firestore (offline persistence)
 - **Google Drive API** (`drive.file` স্কোপ) — শুধু অ্যাপের নিজের তৈরি ব্যাকআপ ফাইল দেখতে পারে
 - **Vercel**-এ ডিপ্লয় করার জন্য প্রস্তুত
