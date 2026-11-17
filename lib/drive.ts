@@ -120,6 +120,24 @@ async function driveFetch(path: string, token: string, init: RequestInit = {}) {
 
 let folderCache: string | null = null;
 
+/** তৈরি হওয়া “Hishab Backups” ফোল্ডারের Drive লিংক (একবার তৈরি হলে) */
+export function driveFolderUrl(): string | null {
+  return folderCache ? `https://drive.google.com/drive/folders/${folderCache}` : null;
+}
+
+/** Drive-এর এররকে ব্যবহারকারীর বোঝার মতো বাংলায় অনুবাদ */
+export function driveErrorText(err: unknown): string {
+  const msg = (err as Error)?.message || "Drive-এ সংযোগ করা যায়নি";
+  if (/has not been used in project|is disabled|SERVICE_DISABLED/i.test(msg))
+    return "Google Drive API চালু নেই। Cloud Console → APIs & Services → Library → “Google Drive API” → Enable করুন, তারপর ২-৩ মিনিট অপেক্ষা করুন।";
+  if (/insufficient|insufficientPermissions|ACCESS_TOKEN_SCOPE/i.test(msg))
+    return "Drive-এর অনুমতি নেই। লগআউট করে আবার Google দিয়ে সাইন ইন করুন (নতুন অনুমতি নিতে হবে)।";
+  if (/quota/i.test(msg)) return "Google Drive-এর স্টোরেজ ভরে গেছে বা কোটা সমস্যা।";
+  if (/invalid_grant|Invalid Credentials/i.test(msg))
+    return "Google টোকেনের মেয়াদ শেষ। আবার চেষ্টা করুন।";
+  return msg;
+}
+
 export async function ensureFolder(token: string): Promise<string | null> {
   if (folderCache) return folderCache;
   try {

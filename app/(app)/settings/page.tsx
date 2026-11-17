@@ -11,6 +11,7 @@ import {
   CloudUpload,
   Database,
   Download,
+  ExternalLink,
   FileJson,
   FolderOpen,
   LogOut,
@@ -56,6 +57,8 @@ import {
 import {
   deleteBackup,
   downloadBackup,
+  driveErrorText,
+  driveFolderUrl,
   getDriveToken,
   listBackups,
   uploadBackup,
@@ -123,6 +126,9 @@ export default function SettingsPage() {
   const [backupOpen, setBackupOpen] = useState(false);
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [driveTestBusy, setDriveTestBusy] = useState(false);
+  const [driveFolder, setDriveFolder] = useState<string | null>(null);
+  const [driveBackupCount, setDriveBackupCount] = useState<number | null>(null);
   const [pendingPayload, setPendingPayload] = useState<Partial<AppData> | null>(null);
   const [pendingSource, setPendingSource] = useState("");
   const [clearOpen, setClearOpen] = useState(false);
@@ -146,7 +152,7 @@ export default function SettingsPage() {
       const direct = await getDriveAccessToken({ interactive });
       if (direct) return direct;
     } catch (err) {
-      if (interactive) toast((err as Error).message || "Google অনুমতি পাওয়া যায়নি", "error");
+      if (interactive) toast(driveErrorText(err), "error");
       if (!clientId) return null;
     }
 
@@ -159,8 +165,24 @@ export default function SettingsPage() {
     try {
       return await getDriveToken(clientId);
     } catch (err) {
-      if (interactive) toast((err as Error).message || "Google অনুমতি পাওয়া যায়নি", "error");
+      if (interactive) toast(driveErrorText(err), "error");
       return null;
+    }
+  }
+
+  async function testDrive() {
+    setDriveTestBusy(true);
+    try {
+      const token = await requireToken();
+      if (!token) return;
+      const list = await listBackups(token);
+      setDriveBackupCount(list.length);
+      setDriveFolder(driveFolderUrl());
+      toast(`Drive সংযুক্ত ✅ · ${list.length}টি ব্যাকআপ পাওয়া গেছে`);
+    } catch (err) {
+      toast(driveErrorText(err), "error");
+    } finally {
+      setDriveTestBusy(false);
     }
   }
 
@@ -181,7 +203,7 @@ export default function SettingsPage() {
       await updateSettings({ lastBackupAt: Date.now() });
       toast(`ব্যাকআপ সম্পন্ন হয়েছে · ${file.name}`);
     } catch (err) {
-      toast((err as Error).message || "ব্যাকআপ ব্যর্থ হয়েছে", "error");
+      toast(driveErrorText(err) || "ব্যাকআপ ব্যর্থ হয়েছে", "error");
     } finally {
       setBackupBusy(false);
     }
@@ -195,7 +217,7 @@ export default function SettingsPage() {
       if (!token) return;
       setFiles(await listBackups(token));
     } catch (err) {
-      toast((err as Error).message || "তালিকা আনা যায়নি", "error");
+      toast(driveErrorText(err) || "তালিকা আনা যায়নি", "error");
     } finally {
       setLoadingFiles(false);
     }
@@ -212,7 +234,7 @@ export default function SettingsPage() {
       setPendingSource(file.name);
       setBackupOpen(false);
     } catch (err) {
-      toast((err as Error).message || "রিস্টোর করা যায়নি", "error");
+      toast(driveErrorText(err) || "রিস্টোর করা যায়নি", "error");
     } finally {
       setRestoreBusy(false);
     }
@@ -546,6 +568,12 @@ export default function SettingsPage() {
               <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
                 Google Drive-এ “Hishab Backups” ফোল্ডারে JSON ফাইল হিসেবে সেভ হবে।
               </p>
+              {user?.google ? (
+                <p className="mt-1.5 flex items-center gap-1.5 text-[10.5px] font-medium text-brand">
+                  <CheckCircle2 className="size-3" />
+                  Google অ্যাকাউন্ট: {user.email} — ব্যাকআপ এই Drive-এ যাবে
+                </p>
+              ) : null}
               {!clientId && !user?.google ? (
                 <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warn/10 px-2.5 py-2 text-[10.5px] font-medium leading-relaxed text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="mt-0.5 size-3 shrink-0" />
@@ -554,6 +582,32 @@ export default function SettingsPage() {
                 </p>
               ) : null}
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 pb-1 pt-3">
+            <Button
+              variant="ghost"
+              loading={driveTestBusy}
+              onClick={testDrive}
+              className="text-[11px]"
+            >
+              <ShieldCheck className="size-3.5" /> Drive সংযোগ পরীক্ষা
+            </Button>
+            {driveBackupCount !== null ? (
+              <span className="text-[10.5px] font-medium text-muted">
+                {driveBackupCount}টি ব্যাকআপ পাওয়া গেছে
+              </span>
+            ) : null}
+            {driveFolder ? (
+              <a
+                href={driveFolder}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[10.5px] font-bold text-brand hover:underline"
+              >
+                <ExternalLink className="size-3" /> ফোল্ডার খুলুন
+              </a>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-2 p-4">
