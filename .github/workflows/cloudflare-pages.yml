@@ -41,13 +41,11 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         if: env.CF_API_TOKEN != ''
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: hishab
-          directory: out
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy out --project-name hishab-app --branch main
 
       - name: Cloudflare secrets নেই
         if: env.CF_API_TOKEN == ''
