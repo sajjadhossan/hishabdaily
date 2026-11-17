@@ -12,6 +12,7 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { AuthShell } from "@/components/auth-layout";
 import { Button, Card, Field, Input, Textarea, useToast } from "@/components/ui";
@@ -106,6 +107,33 @@ export default function SetupPage() {
     window.location.href = "/login";
   }
 
+  async function handleClientJson(file: File) {
+    setError(null);
+    try {
+      const raw = await file.text();
+      const json = JSON.parse(raw);
+
+      // Service Account JSON হলে সতর্ক করুন — এটা ব্রাউজারে রাখা যায় না
+      if (json.type === "service_account") {
+        setError(
+          "এটি Service Account JSON — এর private key ব্রাউজারে রাখা নিরাপদ নয়, আর ব্যক্তিগত Gmail Drive-এ আপলোডও কাজ করে না। Google Cloud → Credentials → OAuth client ID (Web application) থেকে JSON নামান, অথবা শুধু Google দিয়ে সাইন ইন করুন।",
+        );
+        return;
+      }
+
+      const id =
+        json.web?.client_id || json.installed?.client_id || json.client_id || json.clientId;
+      if (typeof id !== "string" || !id.trim().endsWith(".apps.googleusercontent.com")) {
+        setError("এই ফাইলে OAuth Client ID পাওয়া যায়নি। Google Cloud → Credentials → OAuth client → Download JSON।");
+        return;
+      }
+      setClientId(id.trim());
+      toast("Client ID ফাইল থেকে পাওয়া গেছে — এখন সেভ করুন");
+    } catch {
+      setError("JSON ফাইলটা পড়া যায়নি। সঠিক ফাইল বেছে নিন।");
+    }
+  }
+
   return (
     <AuthShell
       title="Firebase সেটআপ"
@@ -169,6 +197,21 @@ export default function SetupPage() {
             spellCheck={false}
           />
         </Field>
+
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface-2/40 px-3 py-3 text-[12px] font-bold text-muted transition hover:border-brand/50 hover:text-brand">
+          <Upload className="size-4" />
+          OAuth Client JSON ফাইল দিয়ে বসান
+          <input
+            type="file"
+            accept=".json,application/json"
+            className="sr-only"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleClientJson(f);
+              e.target.value = "";
+            }}
+          />
+        </label>
 
         <div className="flex gap-2">
           <Button size="lg" block onClick={handleSave} disabled={!text.trim()}>
