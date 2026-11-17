@@ -39,15 +39,34 @@ jobs:
       - name: Build static site
         run: pnpm build:pages
 
+      - name: Check Cloudflare token
+        id: cf
+        env:
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$ACCOUNT_ID" ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cloudflare সিক্রেট নেই — ডিপ্লয় স্কিপ হয়েছে।"
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects?per_page=1")
+          if [ "$code" = "200" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Cloudflare টোকেন অবৈধ বা মেয়াদোত্তীর্ণ (HTTP $code) — ডিপ্লয় স্কিপ হয়েছে।"
+          fi
+
       - name: Deploy to Cloudflare Pages
-        if: env.CF_API_TOKEN != ''
+        if: steps.cf.outputs.ok == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy out --project-name hishabdaily --branch main
 
-      - name: Cloudflare secrets নেই
-        if: env.CF_API_TOKEN == ''
-        run: |
-          echo "::notice::CLOUDFLARE_API_TOKEN সেট করা নেই — Cloudflare ডিপ্লয় স্কিপ হয়েছে।"
+      - name: Cloudflare ডিপ্লয় স্কিপ
+        if: steps.cf.outputs.ok != 'true'
+        run: echo "::notice::Cloudflare ডিপ্লয় স্কিপ হয়েছে — টোকেন তৈরি করে GitHub secret-এ বসালেই চালু হবে।"
