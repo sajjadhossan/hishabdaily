@@ -104,7 +104,7 @@ export default function LoginPage() {
         </Button>
         {isNativeApk() ? (
           <p className="text-center text-[10.5px] font-medium text-muted">
-            অ্যাকাউন্ট বাছাই ও অনুমতি অ্যাপের ভেতরেই দেখানো হবে—ব্রাউজারে যেতে হবে না।
+            মোবাইলে লগইন করা Google অ্যাকাউন্টগুলোর নেটিভ তালিকা দেখবে—ট্যাপ দিলেই লগইন হবে, ব্রাউজারে যেতে হবে না।
           </p>
         ) : null}
 

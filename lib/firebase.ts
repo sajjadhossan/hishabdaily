@@ -10,6 +10,8 @@ export interface FirebaseConfig {
   storageBucket?: string;
   messagingSenderId?: string;
   appId: string;
+  /** Google Identity-এর Web Client ID — APK-তে নেটিভ অ্যাকাউন্ট বাছাইয়ের জন্য */
+  googleClientId?: string;
 }
 
 export interface FirebaseServices {
@@ -60,6 +62,7 @@ export function normalizeConfig(raw: unknown): FirebaseConfig | null {
     storageBucket: pick("storageBucket"),
     messagingSenderId: pick("messagingSenderId"),
     appId: pick("appId"),
+    googleClientId: pick("googleClientId", "webClientId"),
   };
   return isValidConfig(cfg) ? (cfg as FirebaseConfig) : null;
 }
@@ -172,6 +175,8 @@ export function googleClientId(): string | null {
     const stored = window.localStorage.getItem("hishab.googleClientId");
     if (stored && stored.trim()) return stored.trim();
   }
+  const runtime = activeConfigCache?.googleClientId;
+  if (runtime && runtime.trim()) return runtime.trim();
   return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || null;
 }
 

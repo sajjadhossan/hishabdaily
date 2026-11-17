@@ -69,6 +69,7 @@ import {
   type DriveFile,
 } from "@/lib/drive";
 import { getDriveAccessToken } from "@/lib/google";
+import { isNativeApk } from "@/lib/updater";
 import {
   backupFileName,
   buildBackup,
@@ -152,7 +153,19 @@ export default function SettingsPage() {
   const cats = settings.categories.filter((c) => c.type === catType || (catType === "expense" && c.type === "both"));
 
   async function requireToken(interactive = true): Promise<string | null> {
-    // ১) Google দিয়ে সাইন ইন করা থাকলে সেখান থেকেই Drive টোকেন
+    // APK: Drive অনুমতি নেটিভ ফ্লোতে নেওয়া হয়। ব্রাউজার/GIS পদ্ধতিতে যাই না।
+    if (isNativeApk()) {
+      try {
+        const token = await getDriveAccessToken({ interactive });
+        if (token) return token;
+        if (interactive) toast("Google Drive অনুমতি পাওয়া যায়নি। আবার চেষ্টা করুন।", "error");
+      } catch (err) {
+        if (interactive) toast(driveErrorText(err), "error");
+      }
+      return null;
+    }
+
+    // ১) ওয়েব: Google দিয়ে সাইন ইন করা থাকলে সেখান থেকেই Drive টোকেন
     try {
       const direct = await getDriveAccessToken({ interactive });
       if (direct) return direct;

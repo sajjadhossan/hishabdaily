@@ -12,8 +12,10 @@ import {
 import {
   createUserWithEmailAndPassword,
   getRedirectResult,
+  GoogleAuthProvider,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -21,8 +23,9 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { firebaseReady } from "./firebase";
+import { firebaseReady, googleClientId } from "./firebase";
 import { cacheDriveCredential, driveProvider } from "./google";
+import { nativeGoogleSignIn } from "./native-google";
 import { isNativeApk } from "./updater";
 
 export interface AppUser {
@@ -75,6 +78,9 @@ export function authErrorText(err: unknown): string {
     "auth/account-exists-with-different-credential":
       "এই ইমেইলে অন্য পদ্ধতিতে অ্যাকাউন্ট আছে। সেই পদ্ধতিতে সাইন ইন করুন।",
     "auth/requires-recent-login": "নিরাপত্তার জন্য আবার সাইন ইন করুন।",
+    NO_CLIENT_ID: "Google Web Client ID সেট করা নেই। সেটআপ পেজ থেকে Client ID দিন।",
+    SIGN_IN_FAILED: "Google অ্যাকাউন্ট বাছাই ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
+    BAD_CREDENTIAL: "Google অ্যাকাউন্ট থেকে তথ্য পাওয়া যায়নি। আবার চেষ্টা করুন।",
   };
   if (map[code]) return map[code];
   const msg = (err as Error)?.message || "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।";
@@ -153,6 +159,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInGoogle = useCallback(async () => {
     const { auth } = await requireServices();
+
+    if (isNativeApk()) {
+      // APK: ডিভাইসে লগইন করা Google অ্যাকাউন্টগুলোর নেটিভ বাছাই।
+      // কোনো ব্রাউজার পেজ বা বারবার লগইন নেই।
+      const serverClientId = googleClientId();
+      if (!serverClientId) {
+        throw new Error("Google Web Client ID সেট করা নেই। সেটআপ পেজ থেকে Client ID দিন।");
+      }
+      const account = await nativeGoogleSignIn(serverClientId);
+      const credential = GoogleAuthProvider.credential(account.idToken);
+      await signInWithCredential(auth, credential);
+      return;
+    }
+
     const provider = driveProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     try {
@@ -160,13 +180,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cacheDriveCredential(result);
     } catch (err) {
       const code = (err as { code?: string })?.code || "";
-      // APK-তে redirect করলে বাইরের ব্রাউজারে চলে যায় — সেটি এড়াই।
-      // এখানে popup-টি MainActivity-র InAppWebChromeClient অ্যাপের ভেতরেই দেখায়।
       if (
-        !isNativeApk() &&
-        (code === "auth/popup-blocked" ||
-          code === "auth/operation-not-supported-in-this-environment" ||
-          code === "auth/cancelled-popup-request")
+        code === "auth/popup-blocked" ||
+        code === "auth/operation-not-supported-in-this-environment" ||
+        code === "auth/cancelled-popup-request"
       ) {
         await signInWithRedirect(auth, provider);
         return;
