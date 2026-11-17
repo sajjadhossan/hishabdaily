@@ -107,7 +107,7 @@ public class InAppWebChromeClient extends WebChromeClient {
             @Override
             public boolean onCreateWindow(WebView v, boolean d, boolean gesture, Message msg) {
                 // nested popup-এর ক্ষেত্রে একই dialog ব্যবহার করি
-                WebViewTransport transport = (WebViewTransport) msg.obj;
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) msg.obj;
                 transport.setWebView(v);
                 msg.sendToTarget();
                 return true;
