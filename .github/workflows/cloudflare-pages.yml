@@ -45,7 +45,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy out --project-name hishab-app --branch main
+          command: pages deploy out --project-name hishabdaily --branch main
 
       - name: Cloudflare secrets নেই
         if: env.CF_API_TOKEN == ''

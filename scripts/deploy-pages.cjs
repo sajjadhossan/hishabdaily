@@ -16,7 +16,7 @@ const crypto = require("node:crypto");
 
 const root = path.join(__dirname, "..");
 const outDir = path.join(root, "out");
-const projectName = process.env.PAGES_PROJECT || "hishab";
+const projectName = process.env.PAGES_PROJECT || "hishabdaily";
 const productionBranch = process.env.PAGES_BRANCH || "main";
 const token = process.env.CLOUDFLARE_API_TOKEN || "";
 const api = "https://api.cloudflare.com/client/v4";
