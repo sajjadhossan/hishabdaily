@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Cloud,
+  FileUp,
   HandCoins,
   LayoutDashboard,
   LogOut,
@@ -45,6 +46,7 @@ const NAV = [
   { href: "/contacts", label: "দেনা-পাওনা", icon: HandCoins },
   { href: "/reports", label: "রিপোর্ট", icon: BarChart3 },
   { href: "/settings", label: "সেটিংস", icon: SettingsIcon },
+  { href: "/import", label: "স্মার্ট ইম্পোর্ট", icon: FileUp },
 ];
 
 const MOBILE_NAV = [NAV[0], NAV[1], null, NAV[2], null] as const;

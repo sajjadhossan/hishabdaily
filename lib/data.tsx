@@ -57,6 +57,8 @@ interface DataApi extends AppData {
   synced: boolean;
   error: string | null;
   addTransaction: (input: TxInput) => Promise<Transaction>;
+  /** স্মার্ট ইম্পোর্টের জন্য একাধিক লেনদেন এক ব্যাচে লেখে (ডেমো/ক্লাউড দুটোতেই চলে) */
+  addTransactionsBulk: (inputs: TxInput[]) => Promise<Transaction[]>;
   updateTransaction: (id: string, patch: Partial<TxInput>) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   addTemplate: (input: TemplateInput) => Promise<Template>;
@@ -425,6 +427,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [guardCloud, user],
   );
 
+  const addTransactionsBulk = useCallback(
+    async (inputs: TxInput[]): Promise<Transaction[]> => {
+      const now = Date.now();
+      const txs: Transaction[] = inputs.map((input, i) => ({
+        id: uid(),
+        ...input,
+        amount: Number(input.amount) || 0,
+        createdAt: now + i,
+        updatedAt: now + i,
+        updatedBy: user?.uid,
+      }));
+      if (!txs.length) return [];
+      if (isLocalRef.current) {
+        setData((prev) => ({ ...prev, transactions: [...txs, ...prev.transactions] }));
+        return txs;
+      }
+      const { db } = await guardCloud();
+      const uidStr = user!.uid;
+      for (let i = 0; i < txs.length; i += 300) {
+        const batch = writeBatch(db);
+        txs.slice(i, i + 300).forEach((tx) =>
+          batch.set(doc(db, "users", uidStr, "transactions", tx.id), stripId(tx)),
+        );
+        await batch.commit();
+      }
+      return txs;
+    },
+    [guardCloud, user],
+  );
+
   const updateTransaction = useCallback(
     async (id: string, patch: Partial<TxInput>) => {
       const clean = { ...patch, updatedAt: Date.now(), updatedBy: user?.uid };
@@ -755,6 +787,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       synced,
       error,
       addTransaction,
+      addTransactionsBulk,
       updateTransaction,
       removeTransaction,
       addTemplate,
@@ -777,6 +810,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       synced,
       error,
       addTransaction,
+      addTransactionsBulk,
       updateTransaction,
       removeTransaction,
       addTemplate,

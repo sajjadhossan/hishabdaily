@@ -8,3 +8,4 @@ overrides:
 allowBuilds:
   '@firebase/util': true
   protobufjs: true
+  tesseract.js: true

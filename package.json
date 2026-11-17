@@ -9,21 +9,28 @@
     "start": "node scripts/next.cjs start",
     "preview": "node scripts/preview.cjs",
     "preview:build": "node scripts/preview.cjs --build",
-    "build:pages": "STATIC_EXPORT=1 node scripts/next.cjs build",
+    "build:pages": "node scripts/copy-import-assets.cjs && STATIC_EXPORT=1 node scripts/next.cjs build",
     "deploy:pages": "node scripts/deploy-pages.cjs",
-    "lint": "next lint"
+    "lint": "next lint",
+    "predev": "node scripts/copy-import-assets.cjs",
+    "prebuild": "node scripts/copy-import-assets.cjs"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
     "firebase": "^11.10.0",
     "lucide-react": "^0.470.0",
     "next": "15.5.28",
+    "papaparse": "5.7.1",
+    "pdfjs-dist": "4.10.38",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "read-excel-file": "9.3.17",
+    "tesseract.js": "7.0.0"
   },
   "devDependencies": {
     "@next/swc-wasm-nodejs": "15.5.28",
     "@types/node": "^22.10.0",
+    "@types/papaparse": "5.3.16",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",

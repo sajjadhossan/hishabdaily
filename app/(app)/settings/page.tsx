@@ -13,6 +13,7 @@ import {
   Download,
   ExternalLink,
   FileJson,
+  FileUp,
   FolderOpen,
   LogOut,
   Moon,
@@ -637,8 +638,22 @@ export default function SettingsPage() {
 
       {/* ডেটা */}
       <section className="mt-6">
-        <SectionTitle title="ডেটা" subtitle="রপ্তানি, রিস্টোর বা মুছে ফেলা" />
+        <SectionTitle title="ডেটা" subtitle="আমদানি, রপ্তানি, রিস্টোর বা মুছে ফেলা" />
         <Card className="divide-y divide-line">
+          <Link
+            href="/import"
+            className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-surface-2/60"
+          >
+            <span className="grid size-9 place-items-center rounded-xl bg-brand-soft text-brand">
+              <FileUp className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-ink">স্মার্ট ইম্পোর্ট</p>
+              <p className="text-[10.5px] text-muted">PDF, CSV, Excel বা টেক্সট ফাইল থেকে পুরোনো হিসাব আনুন</p>
+            </div>
+            <ChevronRight className="size-4 text-muted" />
+          </Link>
+
           <button
             onClick={exportCsv}
             className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-surface-2/60"
