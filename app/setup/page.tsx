@@ -72,12 +72,19 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
   const [hasCustom, setHasCustom] = useState(false);
   const [hasEnv, setHasEnv] = useState(false);
+  const [appCheckKey, setAppCheckKey] = useState("");
 
   useEffect(() => {
     setHasCustom(!!configFromStorage());
     setHasEnv(!!configFromEnv());
     setClientId(googleClientId() || "");
+    setAppCheckKey(window.localStorage.getItem("hishab.recaptchaKey") || "");
   }, []);
+
+  function saveAppCheckKey(value: string) {
+    if (value.trim()) window.localStorage.setItem("hishab.recaptchaKey", value.trim());
+    else window.localStorage.removeItem("hishab.recaptchaKey");
+  }
 
   function handleSave() {
     setError(null);
@@ -92,6 +99,7 @@ export default function SetupPage() {
       }
       saveConfigToStorage(cfg);
       saveGoogleClientId(clientId.trim() || null);
+      saveAppCheckKey(appCheckKey);
       toast("সেভ হয়েছে! অ্যাপ রিলোড হচ্ছে…");
       setTimeout(() => {
         window.location.href = "/login";
@@ -104,6 +112,7 @@ export default function SetupPage() {
   function handleClear() {
     saveConfigToStorage(null);
     saveGoogleClientId(null);
+    saveAppCheckKey("");
     window.location.href = "/login";
   }
 
@@ -194,6 +203,18 @@ export default function SetupPage() {
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
             placeholder="1234567890-abc.apps.googleusercontent.com"
+            spellCheck={false}
+          />
+        </Field>
+
+        <Field
+          label="App Check কী (ঐচ্ছিক)"
+          hint="Firebase Console → App Check → Apps → reCAPTCHA v3 সাইট-কী। দিলে বাইরের কেউ আপনার API key দিয়ে ডেটা লিখতে পারবে না।"
+        >
+          <Input
+            value={appCheckKey}
+            onChange={(e) => setAppCheckKey(e.target.value)}
+            placeholder="6Lc... (reCAPTCHA v3 site key)"
             spellCheck={false}
           />
         </Field>
