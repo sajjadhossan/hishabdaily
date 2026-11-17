@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useData } from "@/lib/data";
 import { googleClientId } from "@/lib/firebase";
 import { getDriveTokenSilent, uploadBackup } from "@/lib/drive";
+import { getDriveAccessToken } from "@/lib/google";
 import { backupFileName, buildBackup } from "@/lib/backup";
 
 const DAY = 20 * 60 * 60 * 1000; // ২০ ঘণ্টা
@@ -24,13 +25,13 @@ export function AutoBackup() {
     const due = !settings.lastBackupAt || Date.now() - settings.lastBackupAt > DAY;
     if (!due || running.current) return;
 
-    const clientId = googleClientId();
-    if (!clientId) return;
-
     running.current = true;
     (async () => {
       try {
-        const token = await getDriveTokenSilent(clientId);
+        // Google সাইন-ইনের টোকেন থাকলে সেটাই, নইলে পুরোনো Client ID পদ্ধতি
+        const token =
+          (await getDriveAccessToken()) ||
+          (googleClientId() ? await getDriveTokenSilent(googleClientId()!) : null);
         if (!token) return;
         const payload = buildBackup(
           { transactions, templates, contacts, debts, settings },

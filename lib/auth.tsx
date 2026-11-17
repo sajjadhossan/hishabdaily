@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   getRedirectResult,
   onAuthStateChanged,
@@ -23,6 +22,7 @@ import {
   type User,
 } from "firebase/auth";
 import { firebaseReady } from "./firebase";
+import { cacheDriveCredential, driveProvider } from "./google";
 
 export interface AppUser {
   uid: string;
@@ -30,6 +30,8 @@ export interface AppUser {
   email: string;
   photo: string;
   demo: boolean;
+  /** Google অ্যাকাউন্ট দিয়ে সাইন ইন করা (Drive ব্যাকআপের জন্য দরকার) */
+  google: boolean;
 }
 
 interface AuthState {
@@ -85,6 +87,7 @@ function mapUser(u: User): AppUser {
     email: u.email || "",
     photo: u.photoURL || "",
     demo: false,
+    google: u.providerData.some((p) => p.providerId === "google.com"),
   };
 }
 
@@ -126,7 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       );
 
-      getRedirectResult(services.auth).catch(() => undefined);
+      getRedirectResult(services.auth)
+        .then((result) => cacheDriveCredential(result))
+        .catch(() => undefined);
     })();
 
     return () => {
@@ -147,10 +152,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInGoogle = useCallback(async () => {
     const { auth } = await requireServices();
-    const provider = new GoogleAuthProvider();
+    const provider = driveProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      cacheDriveCredential(result);
     } catch (err) {
       const code = (err as { code?: string })?.code || "";
       if (
@@ -200,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: "demo@hishab.app",
       photo: "",
       demo: true,
+      google: false,
     };
     localStorage.setItem(DEMO_KEY, JSON.stringify(demo));
     setUser(demo);

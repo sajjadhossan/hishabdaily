@@ -111,6 +111,18 @@ async function main() {
     parts.push({ hash, rel, buf });
   }
 
+  // রুটে firebase-config.json থাকলে সেটাও ডিপ্লয়ের সাথে যায় —
+  // রিবিল্ড ছাড়াই সাইটে Firebase কনফিগ পাওয়া যাবে।
+  const runtimeConfig = path.join(root, "firebase-config.json");
+  if (fs.existsSync(runtimeConfig)) {
+    const buf = fs.readFileSync(runtimeConfig);
+    const rel = "/firebase-config.json";
+    const hash = crypto.createHash("sha256").update(buf).digest("hex");
+    manifest[rel] = hash;
+    parts.push({ hash, rel, buf });
+    console.log("🔑 firebase-config.json ডিপ্লয়ের সাথে যোগ হচ্ছে");
+  }
+
   const form = new FormData();
   form.append("manifest", JSON.stringify(manifest));
   form.append("branch", productionBranch);

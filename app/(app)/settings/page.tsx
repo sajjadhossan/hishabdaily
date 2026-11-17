@@ -61,6 +61,7 @@ import {
   uploadBackup,
   type DriveFile,
 } from "@/lib/drive";
+import { getDriveAccessToken } from "@/lib/google";
 import {
   backupFileName,
   buildBackup,
@@ -140,8 +141,19 @@ export default function SettingsPage() {
   const cats = settings.categories.filter((c) => c.type === catType || (catType === "expense" && c.type === "both"));
 
   async function requireToken(interactive = true): Promise<string | null> {
+    // ১) Google দিয়ে সাইন ইন করা থাকলে সেখান থেকেই Drive টোকেন
+    try {
+      const direct = await getDriveAccessToken({ interactive });
+      if (direct) return direct;
+    } catch (err) {
+      if (interactive) toast((err as Error).message || "Google অনুমতি পাওয়া যায়নি", "error");
+      if (!clientId) return null;
+    }
+
+    // ২) পুরোনো পদ্ধতি: আলাদা Google Client ID (ঐচ্ছিক)
     if (!clientId) {
-      toast("প্রথমে Google Client ID সেট করুন (Firebase সেটআপ পেজে)", "error");
+      if (interactive)
+        toast("ব্যাকআপের জন্য Google দিয়ে সাইন ইন করুন — অথবা সেটআপে Google Client ID দিন", "error");
       return null;
     }
     try {
@@ -534,11 +546,11 @@ export default function SettingsPage() {
               <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
                 Google Drive-এ “Hishab Backups” ফোল্ডারে JSON ফাইল হিসেবে সেভ হবে।
               </p>
-              {!clientId ? (
+              {!clientId && !user?.google ? (
                 <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warn/10 px-2.5 py-2 text-[10.5px] font-medium leading-relaxed text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="mt-0.5 size-3 shrink-0" />
-                  Google Client ID নেই। Firebase সেটআপ পেজে যোগ করুন, তারপর আবার চেষ্টা
-                  করুন।
+                  Drive ব্যাকআপের জন্য Google দিয়ে সাইন ইন করুন (লগআউট করে “Google দিয়ে
+                  চালিয়ে যান”) — তাহলে আলাদা Client ID লাগবে না।
                 </p>
               ) : null}
             </div>
@@ -638,11 +650,13 @@ export default function SettingsPage() {
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold text-ink">Firebase</p>
               <p className="text-[10.5px] text-muted">
-                {envConfigured
-                  ? "env ভেরিয়েবল থেকে কনফিগার করা"
-                  : customConfigured
-                    ? "কাস্টম কনফিগ সেভ করা আছে"
-                    : "কনফিগার করা হয়নি"}
+                {cloudAvailable
+                  ? "সব ডিভাইসে রিয়েল-টাইম সিঙ্ক সক্রিয়"
+                  : envConfigured
+                    ? "env ভেরিয়েবল থেকে কনফিগার করা"
+                    : customConfigured
+                      ? "কাস্টম কনফিগ সেভ করা আছে"
+                      : "কনফিগার করা হয়নি"}
               </p>
             </div>
             {cloudAvailable ? (

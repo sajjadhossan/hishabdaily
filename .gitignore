@@ -16,6 +16,7 @@ next-env.d.ts
 .env.local
 .env*.local
 /firebase-config.json
+/public/firebase-config.json
 
 # misc
 .DS_Store

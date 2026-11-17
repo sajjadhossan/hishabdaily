@@ -120,25 +120,23 @@ pnpm preview:build    # কোড বদলালে নতুন করে ব�
 
 ## ☁️ Google Drive ব্যাকআপ সেটআপ
 
-1. [Google Cloud Console](https://console.cloud.google.com) → উপরের Firebase প্রজেক্টটিই বেছে নিন।
-2. **APIs & Services → Library → Google Drive API → Enable**।
-3. **APIs & Services → OAuth consent screen**
-   - User type: **External** → অ্যাপের নাম/সাপোর্ট ইমেইল দিন।
-   - **Scopes → Add or remove scopes** → `https://www.googleapis.com/auth/drive.file` যোগ করুন।
-   - **Test users**-এ নিজের Gmail যোগ করুন (অ্যাপ Testing-এ থাকলে)।
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**
-   - Application type: **Web application**
-   - **Authorized JavaScript origins**:
-     - `http://localhost:3000`
-     - `https://your-app.vercel.app`
-   - Redirect URI লাগবে না (Google Identity Services ব্যবহার করা হয়েছে)।
-5. Client ID কপি করে বসান:
-   - env: `NEXT_PUBLIC_GOOGLE_CLIENT_ID=...`
-   - অথবা `/setup` পেজের “Google Client ID” ঘরে।
+**সহজ পথ:** শুধু **Google দিয়ে সাইন ইন** করলেই হয় — লগইনের সময়ই Drive-এর অনুমতি
+নেওয়া হয়, আলাদা Client ID লাগে না। এর জন্য Firebase প্রজেক্টে একবার
+**Google Drive API** চালু করতে হবে ও OAuth consent screen-এ `drive.file` স্কোপ
+যোগ করতে হবে — পুরো ধাপ **`docs/GOOGLE-SETUP.md`**-এ আছে।
+
+**ঐচ্ছিক (পুরোনো পথ):** ইমেইল/পাসওয়ার্ড অ্যাকাউন্টেও Drive ব্যাকআপ চাইলে একটা
+OAuth Web Client ID বানিয়ে `/setup` পেজে বা `NEXT_PUBLIC_GOOGLE_CLIENT_ID`-এ দিন:
+
+1. [Google Cloud Console](https://console.cloud.google.com) → Firebase প্রজেক্টটিই বেছে নিন।
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID** →
+   **Web application**।
+3. **Authorized JavaScript origins**: `http://localhost:3000` আর আপনার ডিপ্লয় করা
+   ডোমেইন (যেমন `https://hishab.pages.dev`)।
+4. Client ID কপি করে `/setup` পেজে বসান।
 
 > `drive.file` স্কোপের কারণে অ্যাপ শুধু নিজের তৈরি “Hishab Backups” ফোল্ডারের
 > ফাইল পড়তে/লিখতে পারে — আপনার Drive-এর বাকি কিছুই দেখতে পায় না।
-> Testing মোডে থাকলে টোকেন ৭ দিনে expire হতে পারে; দীর্ঘমেয়াদে **Publish app** করুন।
 
 ---
 

@@ -159,8 +159,8 @@ export default function SetupPage() {
         </Field>
 
         <Field
-          label="Google Client ID (Drive ব্যাকআপের জন্য — ঐচ্ছিক)"
-          hint="Google Cloud Console → Credentials → OAuth 2.0 Web Client ID"
+          label="Google Client ID (ঐচ্ছিক)"
+          hint="Google দিয়ে সাইন ইন করলে এটি লাগে না — শুধু ইমেইল/পাসওয়ার্ড অ্যাকাউন্টে Drive ব্যাকআপ চাইলে দিন"
         >
           <Input
             value={clientId}
