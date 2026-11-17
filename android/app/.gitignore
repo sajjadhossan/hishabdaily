@@ -1,0 +1,7 @@
+/build/*
+!/build/.npmkeep
+# cap sync দ্বারা তৈরি — প্রতি বিল্ডে আবার জেনারেট হয়, git-এ রাখার দরকার নেই
+/src/main/assets/public
+/src/main/assets/capacitor.config.json
+/release.keystore
+/keystore.properties

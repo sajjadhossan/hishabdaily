@@ -1,0 +1,157 @@
+name: Build & Release Android APK
+
+# main-এ push করলেই APK বিল্ড হয়ে GitHub Releases-এ যায়।
+# একবার সেটআপ (রিপো → Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64   — release keystore-এর base64
+#   ANDROID_KEYSTORE_PASSWORD — store password
+#   ANDROID_KEY_ALIAS         — key alias
+#   ANDROID_KEY_PASSWORD      — key password
+# সিক্রেট না থাকলে ওয়ার্কফ্লো নিরাপদভাবে APK স্টেপ স্কিপ করে (ওয়েব ডিপ্লয় অপ্রভাবিত)।
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check version sync
+        run: pnpm version:check
+
+      - name: Build static web app
+        run: pnpm build:pages
+
+      - name: Sync Capacitor Android assets
+        run: pnpm exec cap sync android
+
+      - name: Prepare signing keystore
+        id: sign
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KS_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KS_PASS" ] || [ -z "$KS_ALIAS" ] || [ -z "$KS_KEY_PASS" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Android signing secrets সেট করা নেই — APK রিলিজ স্কিপ হয়েছে।"
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
+          {
+            echo "ANDROID_KEYSTORE_FILE=$PWD/android/app/release.keystore"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KS_PASS"
+            echo "ANDROID_KEY_ALIAS=$KS_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KS_KEY_PASS"
+          } >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed release APK
+        if: steps.sign.outputs.ready == 'true'
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename & measure APK
+        id: apk
+        if: steps.sign.outputs.ready == 'true'
+        run: |
+          VERSION=$(node -p "require('./version.json').version")
+          CODE=$(node -p "require('./version.json').code")
+          SRC="android/app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$SRC" ]; then
+            echo "::error::APK পাওয়া যায়নি: $SRC"
+            exit 1
+          fi
+          mkdir -p dist
+          APK="dist/hishabdaily-v${VERSION}.apk"
+          cp "$SRC" "$APK"
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "size=$(du -h "$APK" | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "APK: $APK · $(du -h "$APK" | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.sign.outputs.ready == 'true'
+        with:
+          name: hishabdaily-apk-v${{ steps.apk.outputs.version }}
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        id: publish
+        if: steps.sign.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.apk.outputs.version }}
+          APK: ${{ steps.apk.outputs.path }}
+          SIZE: ${{ steps.apk.outputs.size }}
+          CODE: ${{ steps.apk.outputs.code }}
+          VERSION: ${{ steps.apk.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          cat > release-notes.md <<EOF
+          ## হিসাব v${VERSION} (build ${CODE})
+
+          **APK সাইজ:** ${SIZE}
+
+          - আয়-ব্যয়, নিয়মিত কেনাকাটা, দেনা-পাওনা
+          - Google sign-in + Firestore রিয়েল-টাইম সিঙ্ক
+          - Google Drive JSON ব্যাকআপ
+          - স্মার্ট ইম্পোর্ট — PDF (টেক্সট/OCR), CSV, Excel, যেকোনো টেক্সট ফাইল
+          - একই ভার্সন ওয়েব অ্যাপ ও APK-তে
+
+          **ইনস্টল:** APK ডাউনলোড করে ফোনে খুলুন। প্রথমবার “Install unknown apps” অনুমতি দিতে হবে।
+
+          ওয়েব: https://hishabdaily.vercel.app · https://hishabdaily.pages.dev
+          EOF
+
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --repo "$REPO" --clobber
+            gh release edit "$TAG" --repo "$REPO" --notes-file release-notes.md --title "হিসাব v${VERSION}"
+          else
+            gh release create "$TAG" "$APK" --repo "$REPO" \
+              --title "হিসাব v${VERSION}" --notes-file release-notes.md
+          fi
+          echo "url=https://github.com/$REPO/releases/tag/$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build summary
+        if: steps.sign.outputs.ready == 'true'
+        run: |
+          echo "### ✅ APK প্রকাশিত" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: **${{ steps.apk.outputs.version }}** (build ${{ steps.apk.outputs.code }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Size: **${{ steps.apk.outputs.size }}**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Release: ${{ steps.publish.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"

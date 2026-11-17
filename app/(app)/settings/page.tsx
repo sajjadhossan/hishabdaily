@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { VERSION_LABEL } from "@/lib/version";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -1049,6 +1050,10 @@ export default function SettingsPage() {
           }
         }}
       />
+
+      <p className="mt-6 text-center text-[10.5px] tabular text-muted">
+        হিসাব · {VERSION_LABEL}
+      </p>
     </div>
   );
 }

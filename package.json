@@ -13,9 +13,16 @@
     "deploy:pages": "node scripts/deploy-pages.cjs",
     "lint": "next lint",
     "predev": "node scripts/copy-import-assets.cjs",
-    "prebuild": "node scripts/copy-import-assets.cjs"
+    "prebuild": "node scripts/copy-import-assets.cjs",
+    "version:get": "node scripts/version.cjs get",
+    "version:bump": "node scripts/version.cjs bump",
+    "version:sync": "node scripts/version.cjs sync",
+    "version:check": "node scripts/version.cjs check"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/cli": "8.6.2",
+    "@capacitor/core": "8.6.2",
     "date-fns": "^4.1.0",
     "firebase": "^11.10.0",
     "lucide-react": "^0.470.0",
