@@ -142,7 +142,7 @@ OAuth Web Client ID বানিয়ে `/setup` পেজে বা `NEXT_PUB
 2. **APIs & Services → Credentials → Create credentials → OAuth client ID** →
    **Web application**।
 3. **Authorized JavaScript origins**: `http://localhost:3000` আর আপনার ডিপ্লয় করা
-   ডোমেইন (যেমন `https://hishab.pages.dev`)।
+   ডোমেইন (যেমন `https://hishabdaily.pages.dev`)।
 4. Client ID কপি করে `/setup` পেজে বসান।
 
 > `drive.file` স্কোপের কারণে অ্যাপ শুধু নিজের তৈরি “Hishab Backups” ফোল্ডারের
@@ -189,7 +189,7 @@ firebase deploy --only firestore:rules
 ## ☁️ Cloudflare Pages-এ স্থায়ী লিংক
 
 অ্যাপটি পুরোপুরি ক্লায়েন্ট-সাইড, তাই Cloudflare Pages-এ স্ট্যাটিক আকারে হোস্ট করা যায় —
-ফলাফল: **`https://hishab.pages.dev`** ধরনের স্থায়ী লিংক (ফ্রি)।
+ফলাফল: **`https://hishabdaily.pages.dev`** ধরনের স্থায়ী লিংক (ফ্রি)।
 
 ```bash
 pnpm build:pages                      # out/ ফোল্ডার তৈরি হবে
@@ -199,7 +199,7 @@ CLOUDFLARE_API_TOKEN=xxxx pnpm deploy:pages
 - টোকেন বানান: [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens)
   → **Create Token** → **Edit Cloudflare Workers** টেমপ্লেট, অথবা কাস্টম টোকেনে
   **Account → Cloudflare Pages → Edit** অনুমতি দিন।
-- প্রথমবার চালালে `hishab` নামে প্রজেক্ট তৈরি হয়, এরপর প্রতিবার একই লিংকে নতুন বিল্ড যায়।
+- প্রথমবার চালালে `hishabdaily` নামে প্রজেক্ট তৈরি হয়, এরপর প্রতিবার একই লিংকে নতুন বিল্ড যায়।
 - অন্য নাম চাইলে: `PAGES_PROJECT=my-app pnpm deploy:pages`
 - টোকেন শুধু ওই এক কমান্ডেই লাগে; কোথাও সেভ হয় না।
 
@@ -226,13 +226,13 @@ CLOUDFLARE_API_TOKEN=xxxx pnpm deploy:pages
 
 ### Cloudflare-এ অটো-ডিপ্লয় (GitHub Actions)
 
-`.github/workflows/cloudflare-pages.yml` রেডি আছে। রিপো → **Settings → Secrets and
-variables → Actions**-এ যোগ করুন:
+`.github/workflows/cloudflare-pages.yml` **সেটআপ করা আছে ও চালু** — `git push` করলেই
+GitHub Actions স্ট্যাটিক বিল্ড (`out/`) তৈরি করে Cloudflare Pages-এ ডিপ্লয় করে।
 
-- `CLOUDFLARE_API_TOKEN` — Account → Cloudflare Pages → **Edit**
-- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN` — Account → Cloudflare Pages → **Edit** (রিপো সিক্রেটে সেট করা)
+- `CLOUDFLARE_ACCOUNT_ID` — অ্যাকাউন্ট আইডি (রিপো সিক্রেটে সেট করা)
 
-সিক্রেট না থাকলে ওয়ার্কফ্লো স্কিপ হবে, কিছু ভাঙবে না।
+টোকেন না থাকলে/মেয়াদ শেষ হলে ওয়ার্কফ্লো লাল হয় না — শুধু ডিপ্লয় ধাপটা স্কিপ হয়।
 
 > ⚠️ **Google Drive ব্যাকআপ** একটা স্ন্যাপশট — সেটা সিঙ্ক নয়। দুই অ্যাপের ডেটা
 > মেলানোর একমাত্র উৎস Firestore।
