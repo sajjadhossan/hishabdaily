@@ -26,6 +26,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # version-bump guard-এর জন্য আগের commit-এর version.json লাগবে
+          fetch-depth: 2
 
       - uses: pnpm/action-setup@v4
         with:
