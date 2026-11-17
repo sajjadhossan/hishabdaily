@@ -13,7 +13,7 @@
 | পরিবেশ | লিংক |
 |---|---|
 | **Vercel** (মূল অ্যাপ) | https://hishab-theta.vercel.app |
-| **Cloudflare Pages** | `https://hishab.pages.dev` |
+| **Cloudflare Pages** | https://hishab-app.pages.dev |
 | **ডেটাবেস** | Firestore `hishab-5857e` (একটাই — দুই সাইটেই একই ডেটা) |
 
 > দুই সাইটে **একই Google অ্যাকাউন্টে** সাইন ইন করলে ডেটা রিয়েল-টাইমে সিঙ্ক হয়।
