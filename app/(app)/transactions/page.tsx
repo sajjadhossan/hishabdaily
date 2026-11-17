@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, ReceiptText, Search, SlidersHorizontal, X } from "lucide-react";
 import { MonthSwitcher, PageHeader, useQuickAdd } from "@/components/app-shell";
 import { TransactionRow } from "@/components/transaction-row";
@@ -24,6 +24,13 @@ export default function TransactionsPage() {
   const openForm = useQuickAdd();
   const [month, setMonth] = useState<string>(currentMonth());
   const [type, setType] = useState<TypeFilter>("all");
+
+  // ইম্পোর্টের পর ?month=all দিয়ে এলে পুরোনো সব মাসের ডেটা দেখা যায়
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("month");
+    if (requested) setMonth(requested);
+  }, []);
+
   const [q, setQ] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 

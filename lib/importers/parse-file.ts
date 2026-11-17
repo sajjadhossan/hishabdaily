@@ -1,5 +1,5 @@
 import { parseBackup } from "@/lib/backup";
-import { normalizeText } from "./normalize";
+import { normalizeText, rowFingerprint } from "./normalize";
 import { parsePdfFile } from "./parse-pdf";
 import {
   parseDelimited,
@@ -39,7 +39,7 @@ function rowsFromAppBackup(text: string, sourceName: string): ParsedRow[] {
       account: tx.account || "",
       confidence: 1,
       raw: `JSON backup · ${tx.date}`,
-      fingerprint: "",
+      fingerprint: rowFingerprint(tx.date, Math.abs(Number(tx.amount) || 0), tx.note || tx.category),
       selected: true,
     });
   });
@@ -54,7 +54,7 @@ function rowsFromAppBackup(text: string, sourceName: string): ParsedRow[] {
       category: "দেনা-পাওনা",
       confidence: 1,
       raw: `JSON backup · ${debt.date}`,
-      fingerprint: "",
+      fingerprint: rowFingerprint(debt.date, Math.abs(Number(debt.amount) || 0), debt.contactName || debt.note),
       selected: true,
     });
   });
@@ -121,7 +121,7 @@ export async function parseImportFile(
     const noDate = rows.filter((r) => !r.date).length;
     if (noDate) warnings.push(`${noDate} টি লেনদেনের তারিখ পাওয়া যায়নি — রিভিউতে বসিয়ে দিন।`);
     const lowConfidence = rows.filter((r) => r.confidence < 0.5).length;
-    if (lowConfidence) warnings.push(`${lowConfidence} টি লেনদেনের ধরন/খাত নিশ্চিত নয় — হলুদ মারked গুলো দেখে নিন।`);
+    if (lowConfidence) warnings.push(`${lowConfidence} টি লেনদেনের ধরন/খাত নিশ্চিত নয় — হলুদ চিহ্নিতগুলো দেখে নিন।`);
   }
 
   onProgress?.({ phase: "প্রস্তুত", percent: 100 });

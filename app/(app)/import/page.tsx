@@ -340,7 +340,7 @@ export default function ImportPage() {
                 দুই সাইটেই সিঙ্ক হবে। মাস ও দিন অনুযায়ী লেনদেন পেজে দেখা যাবে।
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => router.push("/transactions")}>লেনদেন দেখুন</Button>
+                <Button size="sm" onClick={() => router.push("/transactions?month=all")}>লেনদেন দেখুন</Button>
                 <Button size="sm" variant="outline" onClick={() => setSaved(null)}>আরেকটি ফাইল</Button>
               </div>
             </div>
