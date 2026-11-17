@@ -74,20 +74,38 @@ function shutdown(exitCode = 0) {
 }
 
 async function main() {
-  if (!fs.existsSync(path.join(root, ".next", "BUILD_ID"))) {
+  const staticReady = fs.existsSync(path.join(root, "out", "index.html"));
+  const nextReady = fs.existsSync(path.join(root, ".next", "BUILD_ID"));
+
+  if (wantBuild) {
+    line("📦 নতুন করে বিল্ড করা হচ্ছে (স্ট্যাটিক)…");
+    await run(process.execPath, [path.join(__dirname, "next.cjs"), "build"], {
+      cwd: root,
+      env: { ...process.env, STATIC_EXPORT: "1" },
+    });
+  } else if (!staticReady && !nextReady) {
     line("📦 কোনো বিল্ড পাওয়া যায়নি — প্রথমে বিল্ড করা হচ্ছে…");
-    await run(process.execPath, [path.join(__dirname, "next.cjs"), "build"], { cwd: root });
-  } else if (wantBuild) {
-    line("📦 নতুন করে বিল্ড করা হচ্ছে…");
-    await run(process.execPath, [path.join(__dirname, "next.cjs"), "build"], { cwd: root });
+    await run(process.execPath, [path.join(__dirname, "next.cjs"), "build"], {
+      cwd: root,
+      env: { ...process.env, STATIC_EXPORT: "1" },
+    });
   }
 
+  const useStatic = fs.existsSync(path.join(root, "out", "index.html"));
   const port = await pickPort();
-  const nextBin = require.resolve("next/dist/bin/next");
-  server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
-    cwd: root,
-    stdio: ["ignore", "inherit", "inherit"],
-  });
+
+  if (useStatic) {
+    server = spawn(process.execPath, [path.join(__dirname, "serve-static.cjs"), String(port)], {
+      cwd: root,
+      stdio: ["ignore", "inherit", "inherit"],
+    });
+  } else {
+    const nextBin = require.resolve("next/dist/bin/next");
+    server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
+      cwd: root,
+      stdio: ["ignore", "inherit", "inherit"],
+    });
+  }
   server.on("exit", (code) => {
     if (!shuttingDown) {
       line(`⚠️ সার্ভার বন্ধ হয়েছে (${code})`);
