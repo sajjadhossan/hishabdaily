@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, Button, Logo, Modal, Spinner } from "./ui";
 import { TransactionForm } from "./transaction-form";
 import { AutoBackup } from "./auto-backup";
+import { UpdateBanner } from "./update-ui";
 
 interface FormOptions {
   preset?: Partial<TxInput>;
@@ -192,6 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main className="lg:pl-64">
           <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">
+            <UpdateBanner />
             {isLocal ? (
               <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-[11.5px] font-medium leading-relaxed text-amber-700 dark:text-amber-300">
                 <Sparkles className="mt-0.5 size-3.5 shrink-0" />

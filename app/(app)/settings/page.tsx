@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
+import { UpdateCard } from "@/components/update-ui";
 import {
   Avatar,
   Badge,
@@ -395,6 +396,9 @@ export default function SettingsPage() {
           </div>
         </div>
       </Card>
+
+      {/* APK আপডেট — শুধু Android APK-তে দেখাবে */}
+      <UpdateCard />
 
       {/* পছন্দ */}
       <section className="mt-6">

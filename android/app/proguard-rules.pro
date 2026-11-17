@@ -15,5 +15,8 @@
 -keepattributes JavascriptInterface
 -keepattributes Signature
 
+# APK self-updater plugin — @CapacitorPlugin + reflection
+-keep class com.hishabdaily.app.updater.** { *; }
+
 # Splash screen / appcompat
 -keep class androidx.core.app.CoreComponentFactory { *; }

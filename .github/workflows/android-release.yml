@@ -98,8 +98,11 @@ jobs:
           fi
           mkdir -p dist
           APK="dist/hishabdaily-v${VERSION}.apk"
+          META="dist/hishabdaily-version.json"
           cp "$SRC" "$APK"
+          cp version.json "$META"
           echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "meta=$META" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "size=$(du -h "$APK" | cut -f1)" >> "$GITHUB_OUTPUT"
@@ -109,7 +112,9 @@ jobs:
         if: steps.sign.outputs.ready == 'true'
         with:
           name: hishabdaily-apk-v${{ steps.apk.outputs.version }}
-          path: ${{ steps.apk.outputs.path }}
+          path: |
+            ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.meta }}
           if-no-files-found: error
           retention-days: 30
 
@@ -120,6 +125,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ steps.apk.outputs.version }}
           APK: ${{ steps.apk.outputs.path }}
+          META: ${{ steps.apk.outputs.meta }}
           SIZE: ${{ steps.apk.outputs.size }}
           CODE: ${{ steps.apk.outputs.code }}
           VERSION: ${{ steps.apk.outputs.version }}
@@ -135,6 +141,7 @@ jobs:
           - Google Drive JSON ব্যাকআপ
           - স্মার্ট ইম্পোর্ট — PDF (টেক্সট/OCR), CSV, Excel, যেকোনো টেক্সট ফাইল
           - একই ভার্সন ওয়েব অ্যাপ ও APK-তে
+          - অ্যাপের ভেতর থেকে নতুন আপডেট ডাউনলোড ও ইনস্টল (আনইনস্টল ছাড়াই)
 
           **ইনস্টল:** APK ডাউনলোড করে ফোনে খুলুন। প্রথমবার “Install unknown apps” অনুমতি দিতে হবে।
 
@@ -142,10 +149,10 @@ jobs:
           EOF
 
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$APK" --repo "$REPO" --clobber
+            gh release upload "$TAG" "$APK" "$META" --repo "$REPO" --clobber
             gh release edit "$TAG" --repo "$REPO" --notes-file release-notes.md --title "হিসাব v${VERSION}"
           else
-            gh release create "$TAG" "$APK" --repo "$REPO" \
+            gh release create "$TAG" "$APK" "$META" --repo "$REPO" \
               --title "হিসাব v${VERSION}" --notes-file release-notes.md
           fi
           echo "url=https://github.com/$REPO/releases/tag/$TAG" >> "$GITHUB_OUTPUT"
