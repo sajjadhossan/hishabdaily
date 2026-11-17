@@ -49,9 +49,9 @@ Firebase-এর এই কনফিগ গোপন কিছু নয় — �
 
 1. **Authentication → Settings** ট্যাব → **Authorized domains**
 2. **Add domain** দিয়ে যোগ করুন (যেগুলো ব্যবহার করবেন):
-   - `hishab.pages.dev` (Cloudflare লিংক)
+   - `hishabdaily.pages.dev` (Cloudflare লিংক)
    - `localhost` (আগে থেকেই থাকে)
-   - আপনার Vercel লিংক, যেমন `hishab-xxxx.vercel.app`
+   - আপনার Vercel লিংক, যেমন `hishabdaily.vercel.app`
    - টানেল লিংক ব্যবহার করলে সেটাও (যেমন `xxxx.trycloudflare.com`)
 
 > ডোমেইন না যোগ করলে Google লগইনে `auth/unauthorized-domain` এরর আসবে।

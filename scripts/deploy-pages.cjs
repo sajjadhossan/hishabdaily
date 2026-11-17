@@ -7,8 +7,8 @@
  * আগে স্ট্যাটিক বিল্ড থাকতে হবে:
  *   pnpm build:pages      → out/ ফোল্ডার
  *
- * প্রথমবার চালালে `hishab` নামে Pages প্রজেক্ট তৈরি হবে,
- * তারপর ঠিকানা হবে: https://hishab.pages.dev
+ * প্রথমবার চালালে `hishabdaily` নামে Pages প্রজেক্ট তৈরি হবে,
+ * তারপর ঠিকানা হবে: https://hishabdaily.pages.dev
  */
 const fs = require("node:fs");
 const path = require("node:path");
