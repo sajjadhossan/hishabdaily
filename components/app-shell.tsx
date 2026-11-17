@@ -64,7 +64,7 @@ function LoadingScreen({ label = "হিসাব লোড হচ্ছে…" 
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, logout, cloudAvailable } = useAuth();
-  const { ready, isLocal, error } = useData();
+  const { ready, isLocal, synced, error } = useData();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -126,6 +126,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="border-t border-line p-3">
+            {!isLocal ? (
+              <div className="mb-1 flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold">
+                <span
+                  className={cn(
+                    "size-2 rounded-full",
+                    synced ? "bg-emerald-500" : "bg-amber-500",
+                  )}
+                />
+                <span className={synced ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                  {synced ? "ক্লাউডে সিঙ্ক হয়েছে" : "অফলাইন — ফিরলে সিঙ্ক হবে"}
+                </span>
+              </div>
+            ) : null}
             <Link
               href="/settings"
               className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-surface-2"
@@ -153,7 +166,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link href="/dashboard" aria-label="হোম">
               <Logo size={30} withText />
             </Link>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              {!isLocal ? (
+                <span
+                  className={cn(
+                    "size-2 rounded-full",
+                    synced ? "bg-emerald-500" : "bg-amber-500",
+                  )}
+                  aria-label={synced ? "সিঙ্ক হয়েছে" : "অফলাইন"}
+                  title={synced ? "ক্লাউডে সিঙ্ক হয়েছে" : "অফলাইন — ফিরলে সিঙ্ক হবে"}
+                />
+              ) : null}
               <Link
                 href="/settings"
                 className="grid size-9 place-items-center rounded-full"

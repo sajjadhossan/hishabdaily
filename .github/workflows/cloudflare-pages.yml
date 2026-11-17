@@ -1,0 +1,55 @@
+name: Deploy to Cloudflare Pages
+
+# GitHub-এ push করলেই Cloudflare Pages-এ নতুন বিল্ড যায়।
+# একবার সেটআপ: রিপো → Settings → Secrets and variables → Actions →
+#   CLOUDFLARE_API_TOKEN  (Account → Cloudflare Pages → Edit)
+#   CLOUDFLARE_ACCOUNT_ID
+# সিক্রেট না থাকলে এই ওয়ার্কফ্লো কিছুই করে না (স্কিপ হয়)।
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static site
+        run: pnpm build:pages
+
+      - name: Deploy to Cloudflare Pages
+        if: env.CF_API_TOKEN != ''
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: hishab
+          directory: out
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cloudflare secrets নেই
+        if: env.CF_API_TOKEN == ''
+        run: |
+          echo "::notice::CLOUDFLARE_API_TOKEN সেট করা নেই — Cloudflare ডিপ্লয় স্কিপ হয়েছে।"

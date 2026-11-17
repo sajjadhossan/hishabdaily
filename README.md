@@ -195,6 +195,40 @@ CLOUDFLARE_API_TOKEN=xxxx pnpm deploy:pages
 
 ---
 
+## 🔄 Vercel + Cloudflare — একই ডেটা, দুই জায়গায়
+
+অ্যাপের ডেটা থাকে **Firebase Firestore**-এ। তাই একই Firebase প্রজেক্ট ব্যবহার করলেই
+দুই ডিপ্লয়মেন্টের ডেটা **রিয়েল-টাইমে** সিঙ্ক হয় (`onSnapshot` লিসেনার) — এক জায়গায়
+যোগ করলে কয়েকশ মিলিসেকেন্ডে অন্যটায় দেখা যায়।
+
+শর্ত:
+
+1. দুই জায়গায় **একই Firebase কনফিগ** (Vercel env বা `public/firebase-config.json`)
+2. দুই ডোমেইনই Firebase → Authentication → **Authorized domains**-এ
+3. দুই সাইটে **একই Google/ইমেইল অ্যাকাউন্টে** লগইন
+
+### Vercel-এ অটো-ডিপ্লয়
+
+1. [vercel.com/new](https://vercel.com/new) → GitHub রিপোটা **Import** করুন
+2. Framework: **Next.js** (স্বয়ংক্রিয়), Install/Build কমান্ড ডিফল্ট থাকতে দিন
+3. **Deploy** — এরপর প্রতিবার `git push` করলেই Vercel **কয়েক সেকেন্ডে** পরিবর্তন ধরে
+   নিয়ে নতুন বিল্ড শুরু করে (বিল্ড শেষ হতে সাধারণত ১–৩ মিনিট)
+
+### Cloudflare-এ অটো-ডিপ্লয় (GitHub Actions)
+
+`.github/workflows/cloudflare-pages.yml` রেডি আছে। রিপো → **Settings → Secrets and
+variables → Actions**-এ যোগ করুন:
+
+- `CLOUDFLARE_API_TOKEN` — Account → Cloudflare Pages → **Edit**
+- `CLOUDFLARE_ACCOUNT_ID`
+
+সিক্রেট না থাকলে ওয়ার্কফ্লো স্কিপ হবে, কিছু ভাঙবে না।
+
+> ⚠️ **Google Drive ব্যাকআপ** একটা স্ন্যাপশট — সেটা সিঙ্ক নয়। দুই অ্যাপের ডেটা
+> মেলানোর একমাত্র উৎস Firestore।
+
+---
+
 ## 📁 প্রজেক্ট কাঠামো
 
 ```

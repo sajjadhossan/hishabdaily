@@ -53,6 +53,8 @@ export type DebtInput = Omit<Debt, "id" | "createdAt" | "contactName" | "txId"> 
 interface DataApi extends AppData {
   ready: boolean;
   isLocal: boolean;
+  /** ক্লাউডে সব শেষ পরিবর্তন পৌঁছেছে কি না (অফলাইনে false) */
+  synced: boolean;
   error: string | null;
   addTransaction: (input: TxInput) => Promise<Transaction>;
   updateTransaction: (id: string, patch: Partial<TxInput>) => Promise<void>;
@@ -262,10 +264,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading, cloudAvailable } = useAuth();
   const [data, setData] = useState<AppData>(EMPTY);
   const [ready, setReady] = useState(false);
+  const [synced, setSynced] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isLocal = !user || user.demo || !cloudAvailable;
   const isLocalRef = useRef(isLocal);
   isLocalRef.current = isLocal;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const online = () => setSynced(true);
+    const offline = () => setSynced(false);
+    if (!navigator.onLine) setSynced(false);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+    };
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -322,6 +338,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
               accounts: st?.accounts?.length ? st.accounts : DEFAULT_SETTINGS.accounts,
             };
             setData((prev) => ({ ...prev, settings: merged }));
+            setSynced(!snap.metadata.fromCache);
             if (!snap.exists()) {
               setDoc(root, { settings: DEFAULT_SETTINGS, createdAt: Date.now() }, { merge: true }).catch(
                 fail,
@@ -344,6 +361,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             (snap) => {
               const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) })) as AppData[K];
               setData((prev) => ({ ...prev, [name]: rows }));
+              setSynced(!snap.metadata.fromCache);
               done();
             },
             fail,
@@ -387,11 +405,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addTransaction = useCallback(
     async (input: TxInput): Promise<Transaction> => {
+      const now = Date.now();
       const tx: Transaction = {
         id: uid(),
         ...input,
         amount: Number(input.amount) || 0,
-        createdAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
+        updatedBy: user?.uid,
       };
       if (isLocalRef.current) {
         setData((prev) => ({ ...prev, transactions: [tx, ...prev.transactions] }));
@@ -406,7 +427,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const updateTransaction = useCallback(
     async (id: string, patch: Partial<TxInput>) => {
-      const clean = { ...patch, updatedAt: Date.now() };
+      const clean = { ...patch, updatedAt: Date.now(), updatedBy: user?.uid };
       if (isLocalRef.current) {
         setData((prev) => ({
           ...prev,
@@ -436,7 +457,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addTemplate = useCallback(
     async (input: TemplateInput): Promise<Template> => {
-      const tpl: Template = { id: uid(), ...input, uses: 0, createdAt: Date.now() };
+      const tpl: Template = {
+        id: uid(),
+        ...input,
+        uses: 0,
+        createdAt: Date.now(),
+        updatedBy: user?.uid,
+      };
       if (isLocalRef.current) {
         setData((prev) => ({ ...prev, templates: [tpl, ...prev.templates] }));
         return tpl;
@@ -458,7 +485,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return;
       }
       const { db } = await guardCloud();
-      await updateDoc(doc(db, "users", user!.uid, "templates", id), patch);
+      await updateDoc(doc(db, "users", user!.uid, "templates", id), {
+        ...patch,
+        updatedAt: Date.now(),
+        updatedBy: user!.uid,
+      });
     },
     [guardCloud, user],
   );
@@ -500,6 +531,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await updateDoc(doc(db, "users", user!.uid, "templates", id), {
           uses: (tpl.uses || 0) + 1,
           lastUsed: Date.now(),
+          updatedAt: Date.now(),
+          updatedBy: user!.uid,
         }).catch(() => undefined);
       }
       return tx;
@@ -509,7 +542,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addContact = useCallback(
     async (input: ContactInput): Promise<Contact> => {
-      const contact: Contact = { id: uid(), ...input, createdAt: Date.now() };
+      const contact: Contact = {
+        id: uid(),
+        ...input,
+        createdAt: Date.now(),
+        updatedBy: user?.uid,
+      };
       if (isLocalRef.current) {
         setData((prev) => ({ ...prev, contacts: [contact, ...prev.contacts] }));
         return contact;
@@ -535,7 +573,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       const { db } = await guardCloud();
       const batch = writeBatch(db);
-      batch.update(doc(db, "users", user!.uid, "contacts", id), patch);
+      batch.update(doc(db, "users", user!.uid, "contacts", id), {
+        ...patch,
+        updatedAt: Date.now(),
+        updatedBy: user!.uid,
+      });
       if (patch.name) {
         data.debts
           .filter((d) => d.contactId === id)
@@ -581,6 +623,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...rest,
         contactName: contact?.name || contactName || "অজানা",
         createdAt: Date.now(),
+        updatedAt: Date.now(),
+        updatedBy: user!.uid,
       };
       if (addToCash) {
         const isIncoming: DebtKind[] = ["borrowed", "lent_repaid"];
@@ -636,7 +680,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return;
       }
       const { db } = await guardCloud();
-      await setDoc(doc(db, "users", user!.uid), { settings: next }, { merge: true });
+      await setDoc(
+        doc(db, "users", user!.uid),
+        { settings: next, settingsUpdatedAt: Date.now(), settingsUpdatedBy: user!.uid },
+        { merge: true },
+      );
     },
     [data.settings, guardCloud, user],
   );
@@ -675,7 +723,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await write("templates", next.templates);
       await write("contacts", next.contacts);
       await write("debts", next.debts);
-      await setDoc(doc(db, "users", uidStr), { settings: next.settings }, { merge: true });
+      await setDoc(
+        doc(db, "users", uidStr),
+        { settings: next.settings, settingsUpdatedAt: Date.now(), settingsUpdatedBy: uidStr },
+        { merge: true },
+      );
     },
     [guardCloud, user],
   );
@@ -700,6 +752,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...data,
       ready,
       isLocal,
+      synced,
       error,
       addTransaction,
       updateTransaction,
@@ -721,6 +774,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       data,
       ready,
       isLocal,
+      synced,
       error,
       addTransaction,
       updateTransaction,

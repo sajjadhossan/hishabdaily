@@ -16,7 +16,6 @@ next-env.d.ts
 .env.local
 .env*.local
 /firebase-config.json
-/public/firebase-config.json
 
 # misc
 .DS_Store
@@ -29,6 +28,7 @@ yarn-error.log*
 
 # preview
 /.preview-url
+/hishab-pages.zip
 
 # vercel
 .vercel

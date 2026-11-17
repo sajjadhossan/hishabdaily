@@ -20,7 +20,9 @@ export interface Transaction {
   /** YYYY-MM-DD (স্থানীয় তারিখ) */
   date: string;
   createdAt: number;
+  /** একাধিক ডিভাইসে এডিট হলে কোনটা নতুন — শেষ লেখাটাই জেতে */
   updatedAt?: number;
+  updatedBy?: string;
   templateId?: string;
 }
 
@@ -37,6 +39,8 @@ export interface Template {
   uses: number;
   lastUsed?: number;
   createdAt: number;
+  updatedAt?: number;
+  updatedBy?: string;
 }
 
 export interface Contact {
@@ -45,6 +49,8 @@ export interface Contact {
   phone: string;
   note: string;
   createdAt: number;
+  updatedAt?: number;
+  updatedBy?: string;
 }
 
 /**
@@ -65,6 +71,8 @@ export interface Debt {
   note: string;
   date: string;
   createdAt: number;
+  updatedAt?: number;
+  updatedBy?: string;
   /** ক্যাশবহিতে তৈরি হওয়া লেনদেনের আইডি (থাকলে) */
   txId?: string;
 }
