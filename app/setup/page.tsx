@@ -158,20 +158,19 @@ export default function SetupPage() {
     >
       <div className="space-y-4">
         <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-[12px] font-medium text-muted">
-          {hasEnv ? (
+          {cloudAvailable ? (
             <>
               <CheckCircle2 className="size-4 text-brand" />
-              ডিপ্লয়মেন্টের env ভেরিয়েবল থেকে Firebase কনফিগ পাওয়া যাচ্ছে
-            </>
-          ) : hasCustom ? (
-            <>
-              <CheckCircle2 className="size-4 text-brand" />
-              এই ব্রাউজারে কাস্টম কনফিগ সেভ করা আছে
+              {hasEnv
+                ? "ডিপ্লয়মেন্টের env ভেরিয়েবল থেকে Firebase কনফিগ পাওয়া যাচ্ছে"
+                : hasCustom
+                  ? "এই ব্রাউজারে কাস্টম কনফিগ সেভ করা আছে"
+                  : "Firebase কনফিগ ইতিমধ্যে কনফিগার করা আছে (স্বয়ংক্রিয়) — কিছু করতে হবে না"}
             </>
           ) : (
             <>
               <AlertCircle className="size-4 text-amber-500" />
-              এখনো কোনো কনফিগ নেই — নিচে পেস্ট করুন
+              কনফিগ পাওয়া যায়নি — নিচে পেস্ট করুন
             </>
           )}
         </div>
