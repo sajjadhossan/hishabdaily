@@ -159,7 +159,7 @@ git init
 git add .
 git commit -m "feat: hishab expense tracker"
 git branch -M main
-git remote add origin https://github.com/<username>/hishab.git
+git remote add origin https://github.com/<username>/hishabdaily.git
 git push -u origin main
 ```
 
