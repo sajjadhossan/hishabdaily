@@ -11,6 +11,9 @@ if (process.platform === "android") {
   env.NODE_OPTIONS = [env.NODE_OPTIONS, `--require=${preload}`]
     .filter(Boolean)
     .join(" ");
+  // Next 15-এ bare specifier `@next/swc-wasm-nodejs` কে pathToFileURL দিয়ে import
+  // করার কারণে WASM ফলব্যাক ভাঙে — এই env দিলে Next সরাসরি ফাইল পাথ ব্যবহার করে।
+  env.NEXT_TEST_WASM_DIR = path.join(__dirname, "..", "node_modules", "@next", "swc-wasm-nodejs");
 }
 
 let nextBin;
