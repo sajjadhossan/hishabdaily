@@ -47,6 +47,24 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Ensure version was bumped on every push
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          CURRENT=$(node -p "const v=require('./version.json'); v.version+'+'+v.code")
+          PREV_JSON=$(git show "${BEFORE}:version.json" 2>/dev/null || true)
+          if [ -z "$PREV_JSON" ]; then
+            echo "::notice::পূর্ববর্তী version.json পাওয়া যায়নি — bump guard স্কিপ করা হলো。"
+            exit 0
+          fi
+          PREV=$(printf '%s' "$PREV_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s);console.log(v.version+'+'+v.code)})")
+          if [ "$CURRENT" = "$PREV" ]; then
+            echo "::error::এই push-এ ভার্সন বাড়ানো হয়নি (${CURRENT})। push-এর আগে 'pnpm version:bump' চালান।"
+            exit 1
+          fi
+          echo "Version bumped: ${PREV} → ${CURRENT}"
+
       - name: Check version sync
         run: pnpm version:check
 

@@ -3,7 +3,7 @@
 > আয়-ব্যয়, নিয়মিত কেনাকাটা আর দেনা-পাওনার সহজ, সুন্দর ও নিরাপদ ট্র্যাকার।
 > Next.js + Firebase + Google Drive ব্যাকআপ — Vercel-এ এক ক্লিকে ডিপ্লয় করার জন্য তৈরি।
 
-![Version](https://img.shields.io/badge/version-1.0.6-blue)
+![Version](https://img.shields.io/badge/version-1.0.7-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-ffca28?logo=firebase)
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)
@@ -34,6 +34,7 @@
 | ☁️ **ক্লাউড সিঙ্ক** | Firestore-এ রিয়েল-টাইম সিঙ্ক — ফোন ও কম্পিউটারে একই ডেটা |
 | 💾 **Google Drive ব্যাকআপ** | JSON ব্যাকআপ Drive-এ, দিনে একবার অটো-ব্যাকআপ, এক ক্লিকে রিস্টোর |
 | 📱 **PWA** | ফোনের হোম স্ক্রিনে অ্যাপের মতো ইনস্টল করা যায় |
+| 📲 **APK আপডেট** | GitHub Release-এ নতুন APK এলে অ্যাপের ভেতরেই আপডেট — আনইনস্টল ছাড়াই ইনস্টল |
 | 🌗 **ডার্ক মোড** | লাইট/ডার্ক/সিস্টেম + বাংলা সংখ্যায় দেখানোর অপশন |
 | 📤 **রপ্তানি** | CSV (Excel/Sheets) ও JSON ফাইল ডাউনলোড |
 | 🧠 **স্মার্ট ইম্পোর্ট** | PDF (টেক্সট/স্ক্যান OCR), CSV, Excel, JSON বা যেকোনো টেক্সট ফাইল থেকে তারিখ·টাকা·খাত শনাক্ত; রিভিউ/দ্রুত ইম্পোর্ট, ডুপ্লিকেট এড়ানো, JSON+CSV ব্যাকআপ |
@@ -251,6 +252,17 @@ GitHub Actions স্ট্যাটিক বিল্ড (`out/`) তৈরি
 
 > ⚠️ **Google Drive ব্যাকআপ** একটা স্ন্যাপশট — সেটা সিঙ্ক নয়। দুই অ্যাপের ডেটা
 > মেলানোর একমাত্র উৎস Firestore।
+
+---
+
+## 📲 Android APK ও আপডেট
+
+- সর্বশেষ APK: [GitHub Releases](https://github.com/sajjadhossan/hishabdaily/releases/latest) — লগইন ছাড়াই সরাসরি ডাউনলোড।
+- অ্যাপ খোলার সময় নতুন release থাকলে ব্যানার দেখায়; **সেটিংস → APK আপডেট** থেকে ম্যানুয়ালি চেক করা যায়।
+- প্রথমবার “Install unknown apps” অনুমতি দিতে হবে। পরের আপডেটগুলো **আনইনস্টল ছাড়াই** ইনস্টল হয়—লেনদেন, ব্যাকআপ ও সেটিংস থাকে।
+- প্যাকেজ `com.hishabdaily.app`; প্রতিটি APK একই signing certificate দিয়ে সাইন হয়, তাই versionCode বাড়ালেই in-place আপডেট কাজ করে।
+
+> 🛠️ **ডেভেলপমেন্ট নিয়ম:** প্রতিটি `git push`-এর আগে `pnpm version:bump` চালান। CI দেখে নেয় যে ভার্সন বাড়ানো হয়েছে কি না; না বাড়ালে push-এর বিল্ড বানানো হয় না।
 
 ---
 
