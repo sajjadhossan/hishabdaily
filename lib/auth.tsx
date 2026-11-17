@@ -23,6 +23,7 @@ import {
 } from "firebase/auth";
 import { firebaseReady } from "./firebase";
 import { cacheDriveCredential, driveProvider } from "./google";
+import { isNativeApk } from "./updater";
 
 export interface AppUser {
   uid: string;
@@ -159,10 +160,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cacheDriveCredential(result);
     } catch (err) {
       const code = (err as { code?: string })?.code || "";
+      // APK-তে redirect করলে বাইরের ব্রাউজারে চলে যায় — সেটি এড়াই।
+      // এখানে popup-টি MainActivity-র InAppWebChromeClient অ্যাপের ভেতরেই দেখায়।
       if (
-        code === "auth/popup-blocked" ||
-        code === "auth/operation-not-supported-in-this-environment" ||
-        code === "auth/cancelled-popup-request"
+        !isNativeApk() &&
+        (code === "auth/popup-blocked" ||
+          code === "auth/operation-not-supported-in-this-environment" ||
+          code === "auth/cancelled-popup-request")
       ) {
         await signInWithRedirect(auth, provider);
         return;

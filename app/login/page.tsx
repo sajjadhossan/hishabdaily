@@ -7,6 +7,7 @@ import { AlertCircle, Eye, EyeOff, Sparkles, Wrench } from "lucide-react";
 import { AuthShell, GoogleIcon } from "@/components/auth-layout";
 import { Button, Field, Input } from "@/components/ui";
 import { authErrorText, useAuth } from "@/lib/auth";
+import { isNativeApk } from "@/lib/updater";
 
 export default function LoginPage() {
   const { user, loading, signInGoogle, signInEmail, signInDemo, cloudAvailable } = useAuth();
@@ -101,6 +102,11 @@ export default function LoginPage() {
           {busy !== "google" ? <GoogleIcon /> : null}
           Google দিয়ে সাইন ইন
         </Button>
+        {isNativeApk() ? (
+          <p className="text-center text-[10.5px] font-medium text-muted">
+            অ্যাকাউন্ট বাছাই ও অনুমতি অ্যাপের ভেতরেই দেখানো হবে—ব্রাউজারে যেতে হবে না।
+          </p>
+        ) : null}
 
         <div className="flex items-center gap-3">
           <span className="h-px flex-1 bg-line" />
