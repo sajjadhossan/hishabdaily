@@ -53,6 +53,14 @@
     overflow: hidden;
   }
 
+  /* ভেতরের স্ক্রল এরিয়া: স্ক্রলবারের জায়গা সবসময় reserved রাখি, যেন
+     স্ক্রল করার সময় content-এর প্রস্থ না বদলে কার্ড ডান-বাঁ না সরে।
+     পাশাপাশি horizontal স্ক্রল বন্ধ করি — শুধু উপর-নিচ স্ক্রল হবে। */
+  .app-main {
+    scrollbar-gutter: stable;
+    overflow-x: clip;
+  }
+
   ::selection {
     background: rgb(var(--brand) / 0.22);
   }

@@ -545,7 +545,7 @@ export function Avatar({
         alt={name}
         width={size}
         height={size}
-        className="rounded-full border border-line object-cover"
+        className="shrink-0 rounded-full border border-line object-cover"
         style={{ width: size, height: size }}
         referrerPolicy="no-referrer"
       />
