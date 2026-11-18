@@ -37,7 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bengaliNumerals: false,
   theme: "system",
   autoBackup: false,
-  version: 1,
+  version: 2,
 };
 
 export const STORAGE_KEY = "hishab.firebaseConfig";

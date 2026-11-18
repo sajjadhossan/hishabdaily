@@ -32,12 +32,17 @@
   }
 
   html {
-    scroll-behavior: smooth;
+    /* route/focus-এ automatic scroll যেন instant হয় — স্ক্রিন নড়বে না */
+    scroll-behavior: auto;
+    overflow-x: hidden;
+    overscroll-behavior: none;
   }
 
   body {
     @apply bg-bg font-sans text-ink antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    overscroll-behavior: none;
   }
 
   ::selection {
@@ -78,6 +83,10 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+  /* horizontal row-এর প্রান্তে swipe করলে পুরো WebView যেন পাশে না সরে */
+  .overscroll-x-contain {
+    overscroll-behavior-x: contain;
   }
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);

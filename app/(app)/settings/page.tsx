@@ -103,8 +103,11 @@ export default function SettingsPage() {
     templates,
     contacts,
     debts,
+    folders,
+    trash,
     settings,
     updateSettings,
+    removeCategory,
     replaceAll,
     clearAllData,
     isLocal,
@@ -120,6 +123,7 @@ export default function SettingsPage() {
   const [catName, setCatName] = useState("");
   const [catEmoji, setCatEmoji] = useState("🛒");
   const [catColor, setCatColor] = useState(COLORS[0]);
+  const [catFolderId, setCatFolderId] = useState("");
   const [accountInput, setAccountInput] = useState("");
   const [catToDelete, setCatToDelete] = useState<Category | null>(null);
 
@@ -210,7 +214,7 @@ export default function SettingsPage() {
       const token = await requireToken();
       if (!token) return;
       const payload = buildBackup(
-        { transactions, templates, contacts, debts, settings },
+        { transactions, templates, contacts, debts, folders, trash, settings },
         { name: user?.name || "ব্যবহারকারী", email: user?.email || "" },
       );
       const file = await uploadBackup(
@@ -285,7 +289,7 @@ export default function SettingsPage() {
 
   function downloadLocalBackup() {
     const payload = buildBackup(
-      { transactions, templates, contacts, debts, settings },
+      { transactions, templates, contacts, debts, folders, trash, settings },
       { name: user?.name || "ব্যবহারকারী", email: user?.email || "" },
     );
     downloadBlob(
@@ -327,20 +331,20 @@ export default function SettingsPage() {
           emoji: catEmoji,
           color: catColor,
           type: catType,
+          folderId: catFolderId || undefined,
         },
       ],
     });
     setCatName("");
+    setCatFolderId("");
     setCatOpen(false);
     toast("নতুন খাত যোগ হয়েছে");
   }
 
   async function deleteCategory(cat: Category) {
-    await updateSettings({
-      categories: settings.categories.filter((c) => c.id !== cat.id),
-    });
+    await removeCategory(cat.id);
     setCatToDelete(null);
-    toast("খাত মুছে ফেলা হয়েছে");
+    toast("খাত রিসাইকেল বিনে চলে গেছে");
   }
 
   async function addAccount() {
@@ -914,6 +918,16 @@ export default function SettingsPage() {
               />
             </Field>
           </div>
+          <Field label="ফোল্ডার (ঐচ্ছিক)" hint="নিয়মিত কেনাকাটা পেজে ফোল্ডার বানান">
+            <Select value={catFolderId} onChange={(e) => setCatFolderId(e.target.value)}>
+              <option value="">ফোল্ডার ছাড়া</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.emoji} {f.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <div>
             <p className="mb-1.5 text-[13px] font-semibold text-ink/80">আইকন</p>
             <div className="flex flex-wrap gap-1.5">

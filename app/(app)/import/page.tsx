@@ -400,7 +400,7 @@ export default function ImportPage() {
           </div>
 
           <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overscroll-x-contain overflow-x-auto">
               <div className="min-w-[780px]">
                 <div className="grid grid-cols-[36px_130px_1fr_110px_115px_130px_32px] gap-2 border-b border-line bg-surface-2/60 px-3 py-2 text-[10.5px] font-bold text-muted">
                   <span></span><span>তারিখ</span><span>বিবরণ</span><span>টাকা</span><span>ধরন</span><span>খাত</span><span></span>

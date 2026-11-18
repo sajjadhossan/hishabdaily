@@ -15,7 +15,7 @@ export default function HomePage() {
   }, [user, loading, router]);
 
   return (
-    <div className="grid min-h-[100dvh] place-items-center bg-bg">
+    <div className="grid min-h-screen place-items-center bg-bg">
       <div className="flex flex-col items-center gap-4">
         <Logo size={54} />
         <div className="flex items-center gap-2 text-sm font-medium text-muted">

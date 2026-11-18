@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, ReceiptText, Search, SlidersHorizontal, X } from "lucide-react";
 import { MonthSwitcher, PageHeader, useQuickAdd } from "@/components/app-shell";
 import { TransactionRow } from "@/components/transaction-row";
+import { TransactionDetail } from "@/components/transaction-detail";
 import { Button, Card, Chip, EmptyState, Input, Segmented } from "@/components/ui";
 import { useData } from "@/lib/data";
 import type { Transaction, TxType } from "@/lib/types";
@@ -33,6 +34,7 @@ export default function TransactionsPage() {
 
   const [q, setQ] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [detail, setDetail] = useState<Transaction | null>(null);
 
   const bengali = settings.bengaliNumerals;
   const currency = settings.currency;
@@ -198,7 +200,7 @@ export default function TransactionsPage() {
                         category={settings.categories.find((c) => c.name === t.category)}
                         currency={currency}
                         bengali={bengali}
-                        onClick={() => openForm({ editing: t })}
+                        onClick={() => setDetail(t)}
                       />
                     ))}
                   </div>
@@ -225,6 +227,15 @@ export default function TransactionsPage() {
           />
         </Card>
       )}
+
+      <TransactionDetail
+        tx={detail}
+        onClose={() => setDetail(null)}
+        onEdit={(tx) => {
+          setDetail(null);
+          openForm({ editing: tx });
+        }}
+      />
     </div>
   );
 }

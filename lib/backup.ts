@@ -11,6 +11,8 @@ export interface BackupFile {
     templates: AppData["templates"];
     contacts: AppData["contacts"];
     debts: AppData["debts"];
+    folders: AppData["folders"];
+    trash: AppData["trash"];
   };
   settings: Settings;
 }
@@ -29,6 +31,8 @@ export function buildBackup(
       templates: data.templates,
       contacts: data.contacts,
       debts: data.debts,
+      folders: data.folders || [],
+      trash: data.trash || [],
     },
     settings: data.settings,
   };
@@ -59,6 +63,9 @@ export function parseBackup(text: string): Partial<AppData> {
     templates: clean(source.templates),
     contacts: clean(source.contacts),
     debts: clean(source.debts),
+    // পুরনো ব্যাকআপে এই দুটি ছিল না — সেক্ষেত্রে খালি তালিকা ধরি
+    folders: clean(source.folders),
+    trash: clean(source.trash),
     settings: { ...DEFAULT_SETTINGS, ...(source.settings || obj.settings || {}) },
   };
 }

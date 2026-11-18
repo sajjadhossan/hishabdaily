@@ -16,8 +16,17 @@ const DAY = 20 * 60 * 60 * 1000; // ২০ ঘণ্টা
  */
 export function AutoBackup() {
   const { user } = useAuth();
-  const { ready, settings, transactions, templates, contacts, debts, updateSettings } =
-    useData();
+  const {
+    ready,
+    settings,
+    transactions,
+    templates,
+    contacts,
+    debts,
+    folders,
+    trash,
+    updateSettings,
+  } = useData();
   const running = useRef(false);
 
   useEffect(() => {
@@ -34,7 +43,7 @@ export function AutoBackup() {
           (googleClientId() ? await getDriveTokenSilent(googleClientId()!) : null);
         if (!token) return;
         const payload = buildBackup(
-          { transactions, templates, contacts, debts, settings },
+          { transactions, templates, contacts, debts, folders, trash, settings },
           { name: user.name, email: user.email },
         );
         await uploadBackup(

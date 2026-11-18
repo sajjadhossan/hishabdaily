@@ -13,6 +13,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   limit,
@@ -26,21 +27,26 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "./auth";
 import { firebaseReady } from "./firebase";
-import { DEFAULT_SETTINGS, isoDate, uid } from "./utils";
+import { DEFAULT_SETTINGS, formatMoney, isoDate, uid } from "./utils";
 import {
   DATA_VERSION,
+  DEBT_LABEL,
   type AppData,
+  type Category,
   type Contact,
   type Debt,
   type DebtKind,
+  type Folder,
   type Settings,
   type Template,
+  type TrashItem,
+  type TrashKind,
   type Transaction,
 } from "./types";
 
 export type TxInput = Pick<
   Transaction,
-  "type" | "amount" | "category" | "account" | "note" | "date"
+  "type" | "amount" | "category" | "account" | "note" | "date" | "title"
 > & { templateId?: string };
 
 export type TemplateInput = Omit<Template, "id" | "createdAt" | "uses" | "lastUsed">;
@@ -49,6 +55,7 @@ export type DebtInput = Omit<Debt, "id" | "createdAt" | "contactName" | "txId"> 
   contactName?: string;
   addToCash?: boolean;
 };
+export type FolderInput = Pick<Folder, "name" | "emoji" | "color">;
 
 interface DataApi extends AppData {
   ready: boolean;
@@ -60,16 +67,29 @@ interface DataApi extends AppData {
   /** স্মার্ট ইম্পোর্টের জন্য একাধিক লেনদেন এক ব্যাচে লেখে (ডেমো/ক্লাউড দুটোতেই চলে) */
   addTransactionsBulk: (inputs: TxInput[]) => Promise<Transaction[]>;
   updateTransaction: (id: string, patch: Partial<TxInput>) => Promise<void>;
+  /** লেনদেনের নাম বদলায় (নোট/টাকা অঘোষিত থাকে) */
+  renameTransaction: (id: string, title: string) => Promise<void>;
+  /** স্থায়ীভাবে না মুছে রিসাইকেল বিনে পাঠায় */
   removeTransaction: (id: string) => Promise<void>;
   addTemplate: (input: TemplateInput) => Promise<Template>;
   updateTemplate: (id: string, patch: Partial<TemplateInput>) => Promise<void>;
   removeTemplate: (id: string) => Promise<void>;
   useTemplate: (id: string) => Promise<Transaction | null>;
+  addFolder: (input: FolderInput) => Promise<Folder>;
+  updateFolder: (id: string, patch: Partial<FolderInput>) => Promise<void>;
+  /** ফোল্ডার বিনে যাবে, ভেতরের আইটেম "ফোল্ডার ছাড়া" হয়ে থাকবে */
+  removeFolder: (id: string) => Promise<void>;
+  removeCategory: (id: string) => Promise<void>;
   addContact: (input: ContactInput) => Promise<Contact>;
   updateContact: (id: string, patch: Partial<ContactInput>) => Promise<void>;
   removeContact: (id: string) => Promise<void>;
   addDebt: (input: DebtInput) => Promise<Debt>;
   removeDebt: (id: string) => Promise<void>;
+  /** বিন থেকে আসল জায়গায় ফেরত আনে (একই ব্যাচের সব আইটেম সহ) */
+  restoreTrash: (id: string) => Promise<void>;
+  /** বিন থেকে একটিকে চিরতরে মুছে ফেলে */
+  deleteTrashForever: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<void>;
   updateSettings: (patch: Partial<Settings>) => Promise<void>;
   replaceAll: (payload: Partial<AppData>) => Promise<void>;
   clearAllData: () => Promise<void>;
@@ -80,6 +100,8 @@ const EMPTY: AppData = {
   templates: [],
   contacts: [],
   debts: [],
+  folders: [],
+  trash: [],
   settings: DEFAULT_SETTINGS,
 };
 
@@ -97,6 +119,8 @@ function readLocal(uid: string): AppData | null {
       templates: parsed.templates || [],
       contacts: parsed.contacts || [],
       debts: parsed.debts || [],
+      folders: parsed.folders || [],
+      trash: parsed.trash || [],
       settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
     };
   } catch {
@@ -146,9 +170,15 @@ function seedDemoData(): AppData {
     t("expense", 500, "দান/ধর্ম", "ক্যাশ", "মসজিদে দান", daysAgo(4)),
   ];
 
+  const folders: Folder[] = [
+    { id: "demo-f-rent", name: "ভাড়া", emoji: "🏠", color: "#8b5cf6", createdAt: Date.now() },
+    { id: "demo-f-food", name: "খাবার", emoji: "🍚", color: "#f97316", createdAt: Date.now() },
+  ];
+
   const templates: Template[] = [
     {
       id: uid(),
+      folderId: "demo-f-food",
       name: "সকালের নাস্তা",
       emoji: "🍳",
       type: "expense",
@@ -162,6 +192,7 @@ function seedDemoData(): AppData {
     },
     {
       id: uid(),
+      folderId: "demo-f-rent",
       name: "রিকশা ভাড়া",
       emoji: "🛺",
       type: "expense",
@@ -188,6 +219,7 @@ function seedDemoData(): AppData {
     },
     {
       id: uid(),
+      folderId: "demo-f-food",
       name: "চা-নাস্তা",
       emoji: "☕",
       type: "expense",
@@ -239,7 +271,7 @@ function seedDemoData(): AppData {
     },
   ];
 
-  return { transactions, templates, contacts, debts, settings: DEFAULT_SETTINGS };
+  return { transactions, templates, contacts, debts, folders, trash: [], settings: DEFAULT_SETTINGS };
 }
 
 /* ──────────────────────────  হেল্পার  ────────────────────────── */
@@ -258,6 +290,44 @@ async function deleteCollection(db: Firestore, path: string) {
     await batch.commit();
     if (snap.size < 300) return;
   }
+}
+
+/** রিসাইকেল বিনে যাওয়া আইটেমের আসল কালেকশন (খাত settings-এ থাকে) */
+const TRASH_SOURCE: Record<TrashKind, string> = {
+  transaction: "transactions",
+  template: "templates",
+  contact: "contacts",
+  debt: "debts",
+  folder: "folders",
+  category: "categories",
+};
+
+function makeTrash(
+  kind: TrashKind,
+  data: TrashItem["data"],
+  originalId: string,
+  label: string,
+  detail: string,
+  deletedBy?: string,
+  extra?: { batchId?: string; affectedIds?: string[] },
+): TrashItem {
+  return {
+    id: uid(),
+    kind,
+    originalId,
+    label,
+    detail,
+    data,
+    deletedAt: Date.now(),
+    deletedBy,
+    ...extra,
+  };
+}
+
+/** Firestore-এ undefined ফিল্ড লেখা যায় না — ফোল্ডার খুলতে ফিল্ডটিই বাদ দিই */
+function unassignFolder<T extends { folderId?: string }>(row: T): T {
+  const { folderId: _folderId, ...rest } = row;
+  return rest as T;
 }
 
 /* ──────────────────────────  প্রোভাইডার  ────────────────────────── */
@@ -315,9 +385,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const root = doc(db, "users", u);
 
       let arrived = 0;
+      // ১ root + ৬ কালেকশন (transactions, templates, contacts, debts, folders, trash)
       const done = () => {
         arrived++;
-        if (arrived >= 5 && active) setReady(true);
+        if (arrived >= 7 && active) setReady(true);
       };
       const fail = (err: unknown) => {
         console.error(err);
@@ -352,7 +423,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ),
       );
 
-      const watch = <K extends "transactions" | "templates" | "contacts" | "debts">(name: K) => {
+      const watch = <
+        K extends "transactions" | "templates" | "contacts" | "debts" | "folders" | "trash",
+      >(
+        name: K,
+      ) => {
         const q =
           name === "transactions"
             ? query(collection(db, "users", u, name), orderBy("createdAt", "desc"), limit(2000))
@@ -375,6 +450,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       watch("templates");
       watch("contacts");
       watch("debts");
+      watch("folders");
+      watch("trash");
 
       // নিরাপত্তা: কোনো কারণে স্ন্যাপশট না এলে ১০ সেকেন্ড পর লোডিং শেষ
       setTimeout(() => {
@@ -404,6 +481,179 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!services || !user) throw new Error("ক্লাউড সংযোগ নেই।");
     return services;
   }, [user]);
+
+  /* ──────────────  রিসাইকেল বিন — ভেতরের হেল্পার  ────────────── */
+
+  /** আসল কালেকশন থেকে সরিয়ে বিনে জমা করে (লোকাল + ক্লাউড) */
+  const pushToTrash = useCallback(
+    async (items: TrashItem[]) => {
+      if (!items.length) return;
+      const idsOf = (kind: TrashKind) =>
+        new Set(items.filter((i) => i.kind === kind).map((i) => i.originalId));
+      const txIds = idsOf("transaction");
+      const tplIds = idsOf("template");
+      const conIds = idsOf("contact");
+      const debtIds = idsOf("debt");
+      const folderIds = idsOf("folder");
+      const catIds = idsOf("category");
+      const affected = new Set(items.flatMap((i) => i.affectedIds || []));
+
+      if (isLocalRef.current) {
+        setData((prev) => ({
+          ...prev,
+          transactions: prev.transactions.filter((t) => !txIds.has(t.id)),
+          templates: prev.templates
+            .filter((t) => !tplIds.has(t.id))
+            .map((t) => (affected.has(t.id) ? { ...t, folderId: undefined } : t)),
+          contacts: prev.contacts.filter((c) => !conIds.has(c.id)),
+          debts: prev.debts.filter((d) => !debtIds.has(d.id)),
+          folders: prev.folders.filter((f) => !folderIds.has(f.id)),
+          trash: [...items, ...prev.trash],
+          settings:
+            catIds.size || affected.size
+              ? {
+                  ...prev.settings,
+                  categories: prev.settings.categories
+                    .filter((c) => !catIds.has(c.id))
+                    .map((c) => (affected.has(c.id) ? { ...c, folderId: undefined } : c)),
+                }
+              : prev.settings,
+        }));
+        return;
+      }
+
+      const { db } = await guardCloud();
+      const uidStr = user!.uid;
+      const batch = writeBatch(db);
+      items.forEach((item) => {
+        batch.set(doc(db, "users", uidStr, "trash", item.id), stripId(item));
+        if (item.kind !== "category") {
+          batch.delete(doc(db, "users", uidStr, TRASH_SOURCE[item.kind], item.originalId));
+        }
+      });
+      data.templates
+        .filter((t) => affected.has(t.id))
+        .forEach((t) =>
+          batch.update(doc(db, "users", uidStr, "templates", t.id), { folderId: deleteField() }),
+        );
+      if (catIds.size || affected.size) {
+        batch.set(
+          doc(db, "users", uidStr),
+          {
+            settings: {
+              ...data.settings,
+              categories: data.settings.categories
+                .filter((c) => !catIds.has(c.id))
+                .map((c) => (affected.has(c.id) ? unassignFolder(c) : c)),
+            },
+            settingsUpdatedAt: Date.now(),
+            settingsUpdatedBy: uidStr,
+          },
+          { merge: true },
+        );
+      }
+      await batch.commit();
+    },
+    [guardCloud, user, data.settings, data.templates],
+  );
+
+  /** বিন থেকে আসল জায়গায় ফেরত আনে */
+  const restoreFromTrash = useCallback(
+    async (items: TrashItem[]) => {
+      if (!items.length) return;
+      const trashIds = new Set(items.map((i) => i.id));
+      const folder = items.find((i) => i.kind === "folder");
+      const affected = new Set(items.flatMap((i) => i.affectedIds || []));
+
+      if (isLocalRef.current) {
+        setData((prev) => {
+          const next: AppData = {
+            ...prev,
+            trash: prev.trash.filter((t) => !trashIds.has(t.id)),
+          };
+          for (const item of items) {
+            if (item.kind === "transaction") {
+              const row = item.data as Transaction;
+              next.transactions = [row, ...next.transactions.filter((t) => t.id !== row.id)];
+            } else if (item.kind === "template") {
+              const row = item.data as Template;
+              next.templates = [row, ...next.templates.filter((t) => t.id !== row.id)];
+            } else if (item.kind === "contact") {
+              const row = item.data as Contact;
+              next.contacts = [row, ...next.contacts.filter((c) => c.id !== row.id)];
+            } else if (item.kind === "debt") {
+              const row = item.data as Debt;
+              next.debts = [row, ...next.debts.filter((d) => d.id !== row.id)];
+            } else if (item.kind === "folder") {
+              const row = item.data as Folder;
+              next.folders = [row, ...next.folders.filter((f) => f.id !== row.id)];
+            } else {
+              const row = item.data as Category;
+              next.settings = {
+                ...next.settings,
+                categories: [...next.settings.categories.filter((c) => c.id !== row.id), row],
+              };
+            }
+          }
+          if (folder) {
+            next.templates = next.templates.map((t) =>
+              affected.has(t.id) ? { ...t, folderId: folder.originalId } : t,
+            );
+            next.settings = {
+              ...next.settings,
+              categories: next.settings.categories.map((c) =>
+                affected.has(c.id) ? { ...c, folderId: folder.originalId } : c,
+              ),
+            };
+          }
+          return next;
+        });
+        return;
+      }
+
+      const { db } = await guardCloud();
+      const uidStr = user!.uid;
+      const batch = writeBatch(db);
+      let categories = [...data.settings.categories];
+      for (const item of items) {
+        batch.delete(doc(db, "users", uidStr, "trash", item.id));
+        if (item.kind === "category") {
+          const row = item.data as Category;
+          categories = [...categories.filter((c) => c.id !== row.id), row];
+        } else {
+          batch.set(
+            doc(db, "users", uidStr, TRASH_SOURCE[item.kind], item.originalId),
+            stripId(item.data as { id: string }),
+          );
+        }
+      }
+      if (folder) {
+        data.templates
+          .filter((t) => affected.has(t.id))
+          .forEach((t) =>
+            batch.update(doc(db, "users", uidStr, "templates", t.id), {
+              folderId: folder.originalId,
+            }),
+          );
+        categories = categories.map((c) =>
+          affected.has(c.id) ? { ...c, folderId: folder.originalId } : c,
+        );
+      }
+      if (items.some((i) => i.kind === "category") || (folder && affected.size)) {
+        batch.set(
+          doc(db, "users", uidStr),
+          {
+            settings: { ...data.settings, categories },
+            settingsUpdatedAt: Date.now(),
+            settingsUpdatedBy: uidStr,
+          },
+          { merge: true },
+        );
+      }
+      await batch.commit();
+    },
+    [guardCloud, user, data.settings, data.templates],
+  );
 
   const addTransaction = useCallback(
     async (input: TxInput): Promise<Transaction> => {
@@ -475,16 +725,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [guardCloud, user],
   );
 
-  const removeTransaction = useCallback(
-    async (id: string) => {
+  const renameTransaction = useCallback(
+    async (id: string, title: string) => {
+      const clean = title.trim();
       if (isLocalRef.current) {
-        setData((prev) => ({ ...prev, transactions: prev.transactions.filter((t) => t.id !== id) }));
+        setData((prev) => ({
+          ...prev,
+          transactions: prev.transactions.map((t) =>
+            t.id === id ? { ...t, title: clean, updatedAt: Date.now() } : t,
+          ),
+        }));
         return;
       }
       const { db } = await guardCloud();
-      await deleteDoc(doc(db, "users", user!.uid, "transactions", id));
+      await updateDoc(doc(db, "users", user!.uid, "transactions", id), {
+        title: clean,
+        updatedAt: Date.now(),
+        updatedBy: user?.uid,
+      });
     },
     [guardCloud, user],
+  );
+
+  const removeTransaction = useCallback(
+    async (id: string) => {
+      const tx = data.transactions.find((t) => t.id === id);
+      if (!tx) return;
+      await pushToTrash([
+        makeTrash(
+          "transaction",
+          tx,
+          tx.id,
+          tx.title || tx.category,
+          `${formatMoney(tx.amount)} · ${tx.date}`,
+          user?.uid,
+        ),
+      ]);
+    },
+    [data.transactions, pushToTrash, user],
   );
 
   const addTemplate = useCallback(
@@ -528,14 +806,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeTemplate = useCallback(
     async (id: string) => {
-      if (isLocalRef.current) {
-        setData((prev) => ({ ...prev, templates: prev.templates.filter((t) => t.id !== id) }));
-        return;
-      }
-      const { db } = await guardCloud();
-      await deleteDoc(doc(db, "users", user!.uid, "templates", id));
+      const tpl = data.templates.find((t) => t.id === id);
+      if (!tpl) return;
+      await pushToTrash([
+        makeTrash(
+          "template",
+          tpl,
+          tpl.id,
+          tpl.name,
+          `${formatMoney(tpl.amount)} · ${tpl.category}`,
+          user?.uid,
+        ),
+      ]);
     },
-    [guardCloud, user],
+    [data.templates, pushToTrash, user],
   );
 
   const useTemplate = useCallback(
@@ -570,6 +854,79 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return tx;
     },
     [addTransaction, data.templates, guardCloud, updateTemplate, user],
+  );
+
+  /* ──────────────  ফোল্ডার ও খাত  ────────────── */
+
+  const addFolder = useCallback(
+    async (input: FolderInput): Promise<Folder> => {
+      const folder: Folder = {
+        id: uid(),
+        name: input.name.trim(),
+        emoji: input.emoji || "📁",
+        color: input.color || "#0C906A",
+        createdAt: Date.now(),
+        updatedBy: user?.uid,
+      };
+      if (isLocalRef.current) {
+        setData((prev) => ({ ...prev, folders: [folder, ...prev.folders] }));
+        return folder;
+      }
+      const { db } = await guardCloud();
+      await setDoc(doc(db, "users", user!.uid, "folders", folder.id), stripId(folder));
+      return folder;
+    },
+    [guardCloud, user],
+  );
+
+  const updateFolder = useCallback(
+    async (id: string, patch: Partial<FolderInput>) => {
+      const clean = { ...patch, updatedAt: Date.now(), updatedBy: user?.uid };
+      if (isLocalRef.current) {
+        setData((prev) => ({
+          ...prev,
+          folders: prev.folders.map((f) => (f.id === id ? { ...f, ...clean } : f)),
+        }));
+        return;
+      }
+      const { db } = await guardCloud();
+      await updateDoc(doc(db, "users", user!.uid, "folders", id), clean);
+    },
+    [guardCloud, user],
+  );
+
+  const removeFolder = useCallback(
+    async (id: string) => {
+      const folder = data.folders.find((f) => f.id === id);
+      if (!folder) return;
+      const affectedIds = [
+        ...data.templates.filter((t) => t.folderId === id).map((t) => t.id),
+        ...data.settings.categories.filter((c) => c.folderId === id).map((c) => c.id),
+      ];
+      await pushToTrash([
+        makeTrash(
+          "folder",
+          folder,
+          folder.id,
+          folder.name,
+          `${affectedIds.length}টি আইটেম ছিল`,
+          user?.uid,
+          { affectedIds },
+        ),
+      ]);
+    },
+    [data.folders, data.templates, data.settings.categories, pushToTrash, user],
+  );
+
+  const removeCategory = useCallback(
+    async (id: string) => {
+      const cat = data.settings.categories.find((c) => c.id === id);
+      if (!cat) return;
+      await pushToTrash([
+        makeTrash("category", cat, cat.id, cat.name, `${cat.emoji} খাত`, user?.uid),
+      ]);
+    },
+    [data.settings.categories, pushToTrash, user],
   );
 
   const addContact = useCallback(
@@ -626,22 +983,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeContact = useCallback(
     async (id: string) => {
-      if (isLocalRef.current) {
-        setData((prev) => ({
-          ...prev,
-          contacts: prev.contacts.filter((c) => c.id !== id),
-          debts: prev.debts.filter((d) => d.contactId !== id),
-        }));
-        return;
-      }
-      const { db } = await guardCloud();
+      const contact = data.contacts.find((c) => c.id === id);
+      if (!contact) return;
+      const batchId = uid();
       const related = data.debts.filter((d) => d.contactId === id);
-      const batch = writeBatch(db);
-      related.forEach((d) => batch.delete(doc(db, "users", user!.uid, "debts", d.id)));
-      batch.delete(doc(db, "users", user!.uid, "contacts", id));
-      await batch.commit();
+      await pushToTrash([
+        makeTrash("contact", contact, contact.id, contact.name, contact.phone || "পরিচিতি", user?.uid, {
+          batchId,
+        }),
+        ...related.map((d) =>
+          makeTrash("debt", d, d.id, d.contactName, `${formatMoney(d.amount)} · ${DEBT_LABEL[d.kind]}`, user?.uid, {
+            batchId,
+          }),
+        ),
+      ]);
     },
-    [data.debts, guardCloud, user],
+    [data.contacts, data.debts, pushToTrash, user],
   );
 
   const addDebt = useCallback(
@@ -685,24 +1042,66 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const removeDebt = useCallback(
     async (id: string) => {
       const debt = data.debts.find((d) => d.id === id);
+      if (!debt) return;
+      const batchId = uid();
+      const tx = debt.txId ? data.transactions.find((t) => t.id === debt.txId) : undefined;
+      await pushToTrash([
+        makeTrash("debt", debt, debt.id, debt.contactName, `${formatMoney(debt.amount)} · ${DEBT_LABEL[debt.kind]}`, user?.uid, {
+          batchId,
+        }),
+        ...(tx
+          ? [
+              makeTrash(
+                "transaction",
+                tx,
+                tx.id,
+                tx.title || tx.category,
+                `${formatMoney(tx.amount)} · ${tx.date}`,
+                user?.uid,
+                { batchId },
+              ),
+            ]
+          : []),
+      ]);
+    },
+    [data.debts, data.transactions, pushToTrash, user],
+  );
+
+  /* ──────────────  রিসাইকেল বিন — পাবলিক অ্যাকশন  ────────────── */
+
+  /** এক আইটেম রিস্টোর করলে একই ব্যাচের বাকিগুলোও ফেরত আসে */
+  const restoreTrash = useCallback(
+    async (id: string) => {
+      const target = data.trash.find((t) => t.id === id);
+      if (!target) return;
+      const group = target.batchId
+        ? data.trash.filter((t) => t.batchId === target.batchId)
+        : [target];
+      await restoreFromTrash(group);
+    },
+    [data.trash, restoreFromTrash],
+  );
+
+  const deleteTrashForever = useCallback(
+    async (id: string) => {
       if (isLocalRef.current) {
-        setData((prev) => ({
-          ...prev,
-          debts: prev.debts.filter((d) => d.id !== id),
-          transactions: debt?.txId
-            ? prev.transactions.filter((t) => t.id !== debt.txId)
-            : prev.transactions,
-        }));
+        setData((prev) => ({ ...prev, trash: prev.trash.filter((t) => t.id !== id) }));
         return;
       }
       const { db } = await guardCloud();
-      const batch = writeBatch(db);
-      if (debt?.txId) batch.delete(doc(db, "users", user!.uid, "transactions", debt.txId));
-      batch.delete(doc(db, "users", user!.uid, "debts", id));
-      await batch.commit();
+      await deleteDoc(doc(db, "users", user!.uid, "trash", id));
     },
-    [data.debts, guardCloud, user],
+    [guardCloud, user],
   );
+
+  const emptyTrash = useCallback(async () => {
+    if (isLocalRef.current) {
+      setData((prev) => ({ ...prev, trash: [] }));
+      return;
+    }
+    const { db } = await guardCloud();
+    await deleteCollection(db, `users/${user!.uid}/trash`);
+  }, [guardCloud, user]);
 
   const updateSettings = useCallback(
     async (patch: Partial<Settings>) => {
@@ -728,6 +1127,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         templates: payload.templates || [],
         contacts: payload.contacts || [],
         debts: payload.debts || [],
+        folders: payload.folders || [],
+        trash: payload.trash || [],
         settings: { ...DEFAULT_SETTINGS, ...(payload.settings || {}) },
       };
       if (isLocalRef.current) {
@@ -741,6 +1142,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteCollection(db, `users/${uidStr}/templates`),
         deleteCollection(db, `users/${uidStr}/contacts`),
         deleteCollection(db, `users/${uidStr}/debts`),
+        deleteCollection(db, `users/${uidStr}/folders`),
+        deleteCollection(db, `users/${uidStr}/trash`),
       ]);
       const write = async <T extends { id: string }>(name: string, rows: T[]) => {
         for (let i = 0; i < rows.length; i += 300) {
@@ -755,6 +1158,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await write("templates", next.templates);
       await write("contacts", next.contacts);
       await write("debts", next.debts);
+      await write("folders", next.folders);
+      await write("trash", next.trash);
       await setDoc(
         doc(db, "users", uidStr),
         { settings: next.settings, settingsUpdatedAt: Date.now(), settingsUpdatedBy: uidStr },
@@ -766,7 +1171,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const clearAllData = useCallback(async () => {
     if (isLocalRef.current) {
-      setData((prev) => ({ ...prev, transactions: [], templates: [], contacts: [], debts: [] }));
+      setData((prev) => ({
+        ...prev,
+        transactions: [],
+        templates: [],
+        contacts: [],
+        debts: [],
+        folders: [],
+        trash: [],
+      }));
       return;
     }
     const { db } = await guardCloud();
@@ -776,6 +1189,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteCollection(db, `users/${uidStr}/templates`),
       deleteCollection(db, `users/${uidStr}/contacts`),
       deleteCollection(db, `users/${uidStr}/debts`),
+      deleteCollection(db, `users/${uidStr}/folders`),
+      deleteCollection(db, `users/${uidStr}/trash`),
     ]);
   }, [guardCloud, user]);
 
@@ -789,16 +1204,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addTransaction,
       addTransactionsBulk,
       updateTransaction,
+      renameTransaction,
       removeTransaction,
       addTemplate,
       updateTemplate,
       removeTemplate,
       useTemplate,
+      addFolder,
+      updateFolder,
+      removeFolder,
+      removeCategory,
       addContact,
       updateContact,
       removeContact,
       addDebt,
       removeDebt,
+      restoreTrash,
+      deleteTrashForever,
+      emptyTrash,
       updateSettings,
       replaceAll,
       clearAllData,
@@ -812,16 +1235,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addTransaction,
       addTransactionsBulk,
       updateTransaction,
+      renameTransaction,
       removeTransaction,
       addTemplate,
       updateTemplate,
       removeTemplate,
       useTemplate,
+      addFolder,
+      updateFolder,
+      removeFolder,
+      removeCategory,
       addContact,
       updateContact,
       removeContact,
       addDebt,
       removeDebt,
+      restoreTrash,
+      deleteTrashForever,
+      emptyTrash,
       updateSettings,
       replaceAll,
       clearAllData,

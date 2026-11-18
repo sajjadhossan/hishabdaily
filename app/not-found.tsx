@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <main className="grid min-h-[100dvh] place-items-center bg-bg px-5 py-10">
+    <main className="grid min-h-screen place-items-center bg-bg px-5 py-10">
       <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-8 text-center shadow-card">
         <p className="text-5xl font-extrabold tracking-tight text-brand">৪০৪</p>
         <h1 className="mt-4 text-lg font-bold text-ink">পেজটা পাওয়া যায়নি</h1>

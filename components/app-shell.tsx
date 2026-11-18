@@ -22,6 +22,7 @@ import {
   Repeat,
   Settings as SettingsIcon,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useData, type TxInput } from "@/lib/data";
@@ -48,13 +49,14 @@ const NAV = [
   { href: "/reports", label: "রিপোর্ট", icon: BarChart3 },
   { href: "/settings", label: "সেটিংস", icon: SettingsIcon },
   { href: "/import", label: "স্মার্ট ইম্পোর্ট", icon: FileUp },
+  { href: "/recycle-bin", label: "রিসাইকেল বিন", icon: Trash2 },
 ];
 
 const MOBILE_NAV = [NAV[0], NAV[1], null, NAV[2], null] as const;
 
 function LoadingScreen({ label = "হিসাব লোড হচ্ছে…" }: { label?: string }) {
   return (
-    <div className="grid min-h-[100dvh] place-items-center bg-bg">
+    <div className="grid min-h-screen place-items-center bg-bg">
       <div className="flex flex-col items-center gap-4">
         <Logo size={52} />
         <div className="flex items-center gap-2 text-sm font-medium text-muted">
@@ -93,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <QuickAddContext.Provider value={openForm}>
-      <div className="min-h-[100dvh] bg-bg">
+      <div className="min-h-screen bg-bg">
         {/* ───── ডেস্কটপ সাইডবার ───── */}
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-surface lg:flex">
           <div className="px-5 py-5">

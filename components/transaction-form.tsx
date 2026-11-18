@@ -311,7 +311,7 @@ export function TransactionForm({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title="লেনদেন মুছে ফেলবেন?"
-        message="এটি স্থায়ীভাবে মুছে যাবে। এটি কি আপনি নিশ্চিত?"
+        message="এটি রিসাইকেল বিনে জমা হবে — ভুল হলে পরে ফেরত আনতে পারবেন।"
         loading={deleting}
         onConfirm={handleDelete}
       />

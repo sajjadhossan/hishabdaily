@@ -89,7 +89,7 @@ function ContactDetailView() {
           <EmptyState
             icon={ready ? Users : HandCoins}
             title={ready ? "এই ব্যক্তি পাওয়া যায়নি" : "লোড হচ্ছে…"}
-            message={ready ? "সম্ভবত এটি মুছে ফেলা হয়েছে।" : undefined}
+            message={ready ? "সম্ভবত এটি রিসাইকেল বিনে চলে গেছে।" : undefined}
             action={
               ready ? (
                 <Link
@@ -118,7 +118,7 @@ function ContactDetailView() {
     setDeleting(true);
     try {
       await removeContact(contact!.id);
-      toast("ব্যক্তি ও তার সব হিসাব মুছে ফেলা হয়েছে");
+      toast("ব্যক্তি ও তার হিসাব রিসাইকেল বিনে চলে গেছে");
       setConfirmDelete(false);
       router.replace("/contacts");
     } catch (err) {
@@ -326,14 +326,14 @@ function ContactDetailView() {
             ? `${DEBT_LABEL[debtToDelete.kind]} — ${formatMoney(debtToDelete.amount, {
                 currency,
                 bengali,
-              })}। এন্ট্রিটি স্থায়ীভাবে মুছে যাবে।`
+              })}। এন্ট্রিটি রিসাইকেল বিনে জমা হবে — ভুল হলে ফেরত আনতে পারবেন।`
             : ""
         }
         onConfirm={async () => {
           if (!debtToDelete) return;
           try {
             await removeDebt(debtToDelete.id);
-            toast("এন্ট্রি মুছে ফেলা হয়েছে");
+            toast("এন্ট্রি রিসাইকেল বিনে চলে গেছে");
           } catch (err) {
             toast((err as Error).message || "মুছে ফেলা যায়নি", "error");
           } finally {
