@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
+import { OptionalFields } from "@/components/optional-fields";
 import {
   Button,
   Card,
@@ -539,6 +540,9 @@ function TemplateForm({
   const [category, setCategory] = useState("");
   const [account, setAccount] = useState("");
   const [note, setNote] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState("");
+  const [familyMember, setFamilyMember] = useState("");
   const [saving, setSaving] = useState(false);
 
   const categories = useMemo(
@@ -556,6 +560,9 @@ function TemplateForm({
       setCategory(editing.category);
       setAccount(editing.account);
       setNote(editing.note);
+      setQuantity(editing.quantity ? String(editing.quantity) : "");
+      setUnit(editing.unit || "");
+      setFamilyMember(editing.familyMember || "");
       setFolderId(editing.folderId || "");
     } else {
       setType("expense");
@@ -566,6 +573,9 @@ function TemplateForm({
       setCategory(settings.categories.find((c) => c.type === "expense")?.name || "");
       setAccount(settings.accounts[0] || "ক্যাশ");
       setNote("");
+      setQuantity("");
+      setUnit("");
+      setFamilyMember("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing?.id]);
@@ -596,6 +606,9 @@ function TemplateForm({
         account,
         note: note.trim(),
         folderId: folderId || undefined,
+        quantity: quantity ? Number(quantity) : undefined,
+        unit: unit || undefined,
+        familyMember: familyMember || undefined,
       });
     } catch (err) {
       toast((err as Error).message || "সেভ করা যায়নি", "error");
@@ -672,6 +685,15 @@ function TemplateForm({
             ))}
           </Select>
         </Field>
+
+        <OptionalFields
+          quantity={quantity}
+          unit={unit}
+          familyMember={familyMember}
+          onQuantity={setQuantity}
+          onUnit={setUnit}
+          onFamilyMember={setFamilyMember}
+        />
 
         <div className="grid grid-cols-2 gap-3">
           <Field label={`টাকা (${settings.currency})`}>

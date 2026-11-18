@@ -3,7 +3,7 @@
 > আয়-ব্যয়, নিয়মিত কেনাকাটা আর দেনা-পাওনার সহজ, সুন্দর ও নিরাপদ ট্র্যাকার।
 > Next.js + Firebase + Google Drive ব্যাকআপ — Vercel-এ এক ক্লিকে ডিপ্লয় করার জন্য তৈরি।
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue)
+![Version](https://img.shields.io/badge/version-1.1.2-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-ffca28?logo=firebase)
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)

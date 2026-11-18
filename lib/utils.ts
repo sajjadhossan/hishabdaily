@@ -34,6 +34,8 @@ export const DEFAULT_SETTINGS: Settings = {
   monthlyBudget: 0,
   categories: [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES],
   accounts: ["ক্যাশ", "বিকাশ", "নগদ", "ব্যাংক", "কার্ড"],
+  units: ["টাকা", "কেজি", "এমএল", "লিটার", "পিস"],
+  familyMembers: [],
   bengaliNumerals: false,
   theme: "system",
   autoBackup: false,

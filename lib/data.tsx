@@ -46,7 +46,16 @@ import {
 
 export type TxInput = Pick<
   Transaction,
-  "type" | "amount" | "category" | "account" | "note" | "date" | "title"
+  | "type"
+  | "amount"
+  | "category"
+  | "account"
+  | "note"
+  | "date"
+  | "title"
+  | "quantity"
+  | "unit"
+  | "familyMember"
 > & { templateId?: string };
 
 export type TemplateInput = Omit<Template, "id" | "createdAt" | "uses" | "lastUsed">;
@@ -276,9 +285,35 @@ function seedDemoData(): AppData {
 
 /* ──────────────────────────  হেল্পার  ────────────────────────── */
 
+/** Firestore-এ undefined ফিল্ড লেখা যায় না — ঐচ্ছিক ফিল্ড না দিলে বাদ দিই */
+function stripUndefined<T extends object>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
 function stripId<T extends { id: string }>(obj: T): Omit<T, "id"> {
   const { id: _id, ...rest } = obj;
-  return rest as Omit<T, "id">;
+  return stripUndefined(rest) as Omit<T, "id">;
+}
+
+/** ঐচ্ছিক ঘর খালি করলে cloud-এ ফিল্ডটিই মুছে দিই, নাহলে পুরোনো মান থেকে যায় */
+const OPTIONAL_FIELDS = [
+  "title",
+  "quantity",
+  "unit",
+  "familyMember",
+  "folderId",
+  "templateId",
+] as const;
+
+function cloudPatch<T extends object>(patch: T): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    out[key] =
+      value === undefined && OPTIONAL_FIELDS.includes(key as (typeof OPTIONAL_FIELDS)[number])
+        ? deleteField()
+        : value;
+  }
+  return stripUndefined(out);
 }
 
 async function deleteCollection(db: Firestore, path: string) {
@@ -720,7 +755,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return;
       }
       const { db } = await guardCloud();
-      await updateDoc(doc(db, "users", user!.uid, "transactions", id), clean);
+      await updateDoc(doc(db, "users", user!.uid, "transactions", id), cloudPatch(clean));
     },
     [guardCloud, user],
   );
@@ -796,7 +831,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       const { db } = await guardCloud();
       await updateDoc(doc(db, "users", user!.uid, "templates", id), {
-        ...patch,
+        ...cloudPatch(patch),
         updatedAt: Date.now(),
         updatedBy: user!.uid,
       });
@@ -834,6 +869,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         note: tpl.note,
         date: isoDate(new Date()),
         templateId: tpl.id,
+        quantity: tpl.quantity,
+        unit: tpl.unit,
+        familyMember: tpl.familyMember,
       });
       if (isLocalRef.current) {
         setData((prev) => ({

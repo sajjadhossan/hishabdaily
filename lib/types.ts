@@ -35,6 +35,12 @@ export interface Transaction {
   createdAt: number;
   /** ব্যবহারকারী দেওয়া নাম — "রিনেম" এটিই বদলায় (না থাকলে খাতের নাম দেখানো হয়) */
   title?: string;
+  /** ঐচ্ছিক: পরিমাণ (যেমন ২ কেজি) — না দিলেও সেভ হয় */
+  quantity?: number;
+  /** ঐচ্ছিক: একক (টাকা/কেজি/এমএল/নিজের বানানো) */
+  unit?: string;
+  /** ঐচ্ছিক: কোন পরিবারের সদস্যের জন্য খরচ */
+  familyMember?: string;
   /** একাধিক ডিভাইসে এডিট হলে কোনটা নতুন — শেষ লেখাটাই জেতে */
   updatedAt?: number;
   updatedBy?: string;
@@ -53,6 +59,10 @@ export interface Template {
   note: string;
   /** ঐচ্ছিক ফোল্ডার — না দিলে "ফোল্ডার ছাড়া" তালিকায় থাকবে */
   folderId?: string;
+  /** ঐচ্ছিক: পরিমাণ, একক ও পরিবারের সদস্য (না দিলেও সেভ হয়) */
+  quantity?: number;
+  unit?: string;
+  familyMember?: string;
   uses: number;
   lastUsed?: number;
   createdAt: number;
@@ -99,6 +109,10 @@ export interface Settings {
   monthlyBudget: number;
   categories: Category[];
   accounts: string[];
+  /** পরিমাণের একক — টাকা/কেজি/এমএল ইত্যাদি (বাটন দিয়ে নতুন যোগ করা যায়) */
+  units: string[];
+  /** পরিবারের সদস্য — বাটন দিয়ে নতুন যোগ করা যায় */
+  familyMembers: string[];
   bengaliNumerals: boolean;
   theme: "system" | "light" | "dark";
   autoBackup: boolean;

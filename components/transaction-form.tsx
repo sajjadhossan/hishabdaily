@@ -16,6 +16,7 @@ import {
   Textarea,
   useToast,
 } from "./ui";
+import { OptionalFields } from "./optional-fields";
 
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000];
 
@@ -39,6 +40,9 @@ export function TransactionForm({
   const [account, setAccount] = useState("");
   const [date, setDate] = useState(todayISO());
   const [note, setNote] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState("");
+  const [familyMember, setFamilyMember] = useState("");
   const [asTemplate, setAsTemplate] = useState(false);
   const [tplName, setTplName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,6 +69,9 @@ export function TransactionForm({
     setAccount(src.account ?? settings.accounts[0] ?? "ক্যাশ");
     setDate(src.date ?? todayISO());
     setNote(src.note ?? "");
+    setQuantity(src.quantity ? String(src.quantity) : "");
+    setUnit(src.unit ?? "");
+    setFamilyMember(src.familyMember ?? "");
     setAsTemplate(false);
     setTplName("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,6 +104,9 @@ export function TransactionForm({
         account: account || settings.accounts[0] || "ক্যাশ",
         note: note.trim(),
         date,
+        quantity: quantity ? Number(quantity) : undefined,
+        unit: unit || undefined,
+        familyMember: familyMember || undefined,
       };
       if (editing) {
         await updateTransaction(editing.id, payload);
@@ -112,6 +122,9 @@ export function TransactionForm({
             category,
             account: payload.account,
             note: payload.note,
+            quantity: payload.quantity,
+            unit: payload.unit,
+            familyMember: payload.familyMember,
           });
         }
         toast(asTemplate ? "লেনদেন যোগ হয়েছে ও নিয়মিত তালিকায় সেভ হয়েছে" : "লেনদেন যোগ হয়েছে");
@@ -235,6 +248,15 @@ export function TransactionForm({
               })}
             </div>
           </div>
+
+          <OptionalFields
+            quantity={quantity}
+            unit={unit}
+            familyMember={familyMember}
+            onQuantity={setQuantity}
+            onUnit={setUnit}
+            onFamilyMember={setFamilyMember}
+          />
 
           <div>
             <p className="mb-2 text-[13px] font-semibold text-ink/80">কোথা থেকে / কোথায়</p>

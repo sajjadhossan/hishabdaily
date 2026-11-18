@@ -77,7 +77,7 @@ import {
   parseBackup,
   transactionsToCsv,
 } from "@/lib/backup";
-import type { AppData, Category, TxType } from "@/lib/types";
+import type { AppData, Category, Folder, TxType } from "@/lib/types";
 import {
   cn,
   downloadBlob,
@@ -107,6 +107,9 @@ export default function SettingsPage() {
     trash,
     settings,
     updateSettings,
+    addFolder,
+    updateFolder,
+    removeFolder,
     removeCategory,
     replaceAll,
     clearAllData,
@@ -124,6 +127,14 @@ export default function SettingsPage() {
   const [catEmoji, setCatEmoji] = useState("🛒");
   const [catColor, setCatColor] = useState(COLORS[0]);
   const [catFolderId, setCatFolderId] = useState("");
+  const [folderOpen, setFolderOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [folderName, setFolderName] = useState("");
+  const [folderEmoji, setFolderEmoji] = useState("📁");
+  const [folderColor, setFolderColor] = useState(COLORS[0]);
+  const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null);
+  const [unitInput, setUnitInput] = useState("");
+  const [memberInput, setMemberInput] = useState("");
   const [accountInput, setAccountInput] = useState("");
   const [catToDelete, setCatToDelete] = useState<Category | null>(null);
 
@@ -347,6 +358,69 @@ export default function SettingsPage() {
     toast("খাত রিসাইকেল বিনে চলে গেছে");
   }
 
+  function openFolderForm(folder?: Folder) {
+    setEditingFolder(folder ?? null);
+    setFolderName(folder?.name ?? "");
+    setFolderEmoji(folder?.emoji ?? "📁");
+    setFolderColor(folder?.color ?? COLORS[0]);
+    setFolderOpen(true);
+  }
+
+  async function saveFolder() {
+    const name = folderName.trim();
+    if (!name) {
+      toast("ফোল্ডারের নাম দিন", "error");
+      return;
+    }
+    if (folders.some((f) => f.name === name && f.id !== editingFolder?.id)) {
+      toast("এই নামে ফোল্ডার আগেই আছে", "error");
+      return;
+    }
+    const input = { name, emoji: folderEmoji, color: folderColor };
+    if (editingFolder) await updateFolder(editingFolder.id, input);
+    else await addFolder(input);
+    setFolderOpen(false);
+    toast(editingFolder ? "ফোল্ডার আপডেট হয়েছে" : "ফোল্ডার যোগ হয়েছে");
+  }
+
+  async function deleteFolder() {
+    if (!folderToDelete) return;
+    await removeFolder(folderToDelete.id);
+    if (catFolderId === folderToDelete.id) setCatFolderId("");
+    setFolderToDelete(null);
+    toast("ফোল্ডার রিসাইকেল বিনে চলে গেছে");
+  }
+
+  async function addUnit() {
+    const value = unitInput.trim();
+    if (!value) {
+      toast("এককের নাম দিন", "error");
+      return;
+    }
+    if (settings.units.some((u) => u === value)) {
+      toast("এই একক আগেই আছে", "error");
+      return;
+    }
+    await updateSettings({ units: [...settings.units, value] });
+    setUnitInput("");
+    toast("একক যোগ হয়েছে");
+  }
+
+  async function addMember() {
+    const value = memberInput.trim();
+    if (!value) {
+      toast("সদস্যের নাম দিন", "error");
+      return;
+    }
+    if (settings.familyMembers.some((m) => m === value)) {
+      toast("এই সদস্য আগেই আছে", "error");
+      return;
+    }
+    await updateSettings({ familyMembers: [...settings.familyMembers, value] });
+    setMemberInput("");
+    toast("সদস্য যোগ হয়েছে");
+  }
+
   async function addAccount() {
     const value = accountInput.trim();
     if (!value) return;
@@ -511,6 +585,46 @@ export default function SettingsPage() {
           }
         />
         <Card className="p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[13px] font-bold text-ink">ফোল্ডার ({folders.length})</p>
+            <Button size="sm" variant="soft" onClick={() => openFolderForm()}>
+              <Plus className="size-3.5" /> নতুন ফোল্ডার
+            </Button>
+          </div>
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            {folders.length ? (
+              folders.map((f) => (
+                <span
+                  key={f.id}
+                  className="inline-flex items-center gap-1 rounded-full border border-line bg-surface py-1 pl-2.5 pr-1.5 text-[11.5px] font-semibold text-ink"
+                >
+                  <span>{f.emoji}</span>
+                  {f.name}
+                  <button
+                    onClick={() => openFolderForm(f)}
+                    aria-label={`${f.name} সম্পাদনা`}
+                    className="grid size-5 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-brand"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                  <button
+                    onClick={() => setFolderToDelete(f)}
+                    aria-label={`${f.name} মুছুন`}
+                    className="grid size-5 place-items-center rounded-full text-muted hover:bg-danger/10 hover:text-danger"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))
+            ) : (
+              <p className="text-[11.5px] text-muted">
+                এখনো কোনো ফোল্ডার নেই — "নতুন ফোল্ডার" বাটনে যোগ করুন।
+              </p>
+            )}
+          </div>
+          <div className="mb-3 border-t border-line pt-3">
+            <p className="text-[13px] font-bold text-ink">খাত ({settings.categories.length})</p>
+          </div>
           <div className="mb-3 flex flex-wrap gap-1.5">
             {settings.categories.map((c) => (
               <span
@@ -570,6 +684,96 @@ export default function SettingsPage() {
               }}
             />
             <Button variant="soft" onClick={addAccount}>
+              <Plus className="size-4" />
+            </Button>
+          </div>
+        </Card>
+      </section>
+
+      {/* পরিমাণের একক */}
+      <section className="mt-6">
+        <SectionTitle
+          title="পরিমাণের একক"
+          subtitle="টাকা, কেজি, এমএল — লেনদেনে বেছে নেওয়া যাবে"
+        />
+        <Card className="p-4">
+          <div className="flex flex-wrap gap-1.5">
+            {settings.units.map((u) => (
+              <span
+                key={u}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface py-1 pl-3 pr-1.5 text-[11.5px] font-semibold text-ink"
+              >
+                {u}
+                <button
+                  onClick={() => updateSettings({ units: settings.units.filter((x) => x !== u) })}
+                  aria-label={`${u} সরান`}
+                  className="grid size-5 place-items-center rounded-full text-muted hover:bg-danger/10 hover:text-danger"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Input
+              value={unitInput}
+              onChange={(e) => setUnitInput(e.target.value)}
+              placeholder="নতুন একক, যেমন: বক্স"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addUnit();
+              }}
+            />
+            <Button variant="soft" onClick={addUnit}>
+              <Plus className="size-4" />
+            </Button>
+          </div>
+        </Card>
+      </section>
+
+      {/* পরিবারের সদস্য */}
+      <section className="mt-6">
+        <SectionTitle
+          title="পরিবারের সদস্য"
+          subtitle="কার জন্য খরচ হয়েছে — লেনদেনে বেছে নেওয়া যাবে"
+        />
+        <Card className="p-4">
+          <div className="flex flex-wrap gap-1.5">
+            {settings.familyMembers.length ? (
+              settings.familyMembers.map((m) => (
+                <span
+                  key={m}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface py-1 pl-3 pr-1.5 text-[11.5px] font-semibold text-ink"
+                >
+                  {m}
+                  <button
+                    onClick={() =>
+                      updateSettings({
+                        familyMembers: settings.familyMembers.filter((x) => x !== m),
+                      })
+                    }
+                    aria-label={`${m} সরান`}
+                    className="grid size-5 place-items-center rounded-full text-muted hover:bg-danger/10 hover:text-danger"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))
+            ) : (
+              <p className="text-[11.5px] text-muted">
+                এখনো কোনো সদস্য নেই — নিচে নাম লিখে যোগ করুন।
+              </p>
+            )}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Input
+              value={memberInput}
+              onChange={(e) => setMemberInput(e.target.value)}
+              placeholder="নতুন সদস্য, যেমন: মা"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addMember();
+              }}
+            />
+            <Button variant="soft" onClick={addMember}>
               <Plus className="size-4" />
             </Button>
           </div>
@@ -918,7 +1122,7 @@ export default function SettingsPage() {
               />
             </Field>
           </div>
-          <Field label="ফোল্ডার (ঐচ্ছিক)" hint="নিয়মিত কেনাকাটা পেজে ফোল্ডার বানান">
+          <Field label="ফোল্ডার (ঐচ্ছিক)" hint="উপরের ফোল্ডার সেকশন থেকে নতুন বানানো যায়">
             <Select value={catFolderId} onChange={(e) => setCatFolderId(e.target.value)}>
               <option value="">ফোল্ডার ছাড়া</option>
               {folders.map((f) => (
@@ -1040,6 +1244,79 @@ export default function SettingsPage() {
           </div>
         )}
       </Modal>
+
+      <Modal
+        open={folderOpen}
+        onClose={() => setFolderOpen(false)}
+        title={editingFolder ? "ফোল্ডার সম্পাদনা" : "নতুন ফোল্ডার"}
+        subtitle="খাত ও নিয়মিত কেনাকাটা সাজানোর জন্য"
+        footer={
+          <Button block onClick={saveFolder}>
+            {editingFolder ? "আপডেট করুন" : "ফোল্ডার যোগ করুন"}
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-2xl">
+              {folderEmoji}
+            </span>
+            <Field label="নাম" className="flex-1">
+              <Input
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                placeholder="যেমন: খাবার"
+                autoFocus
+              />
+            </Field>
+          </div>
+          <div>
+            <p className="mb-1.5 text-[13px] font-semibold text-ink/80">আইকন</p>
+            <div className="no-scrollbar flex flex-wrap gap-1.5">
+              {["📁", "🍚", "🛒", "🏠", "🧾", "👨‍👩‍👧", "💼", "🎁", "✈️", "📦"].map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setFolderEmoji(e)}
+                  className={cn(
+                    "grid size-9 place-items-center rounded-xl border text-lg transition",
+                    folderEmoji === e ? "border-brand bg-brand-soft" : "border-line bg-surface",
+                  )}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1.5 text-[13px] font-semibold text-ink/80">রঙ</p>
+            <div className="flex flex-wrap gap-2">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setFolderColor(c)}
+                  aria-label={c}
+                  className={cn(
+                    "size-7 rounded-full border-2 transition",
+                    folderColor === c ? "border-ink scale-110" : "border-transparent",
+                  )}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!folderToDelete}
+        onClose={() => setFolderToDelete(null)}
+        title={`“${folderToDelete?.name}” ফোল্ডার মুছবেন?`}
+        message="ফোল্ডারটি রিসাইকেল বিনে যাবে। ভেতরের খাত ও নিয়মিত কেনাকাটা ফোল্ডার ছাড়া থেকে যাবে।"
+        confirmText="ফোল্ডার মুছুন"
+        onConfirm={deleteFolder}
+      />
 
       <ConfirmDialog
         open={!!catToDelete}

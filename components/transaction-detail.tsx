@@ -1,11 +1,11 @@
 "use client";
 
-import { CalendarDays, Pencil, StickyNote, Tag, Trash2, Wallet } from "lucide-react";
+import { CalendarDays, Package, Pencil, StickyNote, Tag, Trash2, Users, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, ConfirmDialog, Field, IconButton, Input, Modal, useToast } from "@/components/ui";
 import { useData } from "@/lib/data";
 import type { Transaction } from "@/lib/types";
-import { formatDate, formatMoney, weekdayOf } from "@/lib/utils";
+import { digits, formatDate, formatMoney, weekdayOf } from "@/lib/utils";
 
 /**
  * লেনদেনের বিশদ দেখা + নাম বদলানো + মুছে ফেলা।
@@ -65,6 +65,18 @@ export function TransactionDetail({
   const rows = tx
     ? [
         { icon: Tag, label: "খাত", value: tx.category },
+        ...(tx.quantity || tx.unit
+          ? [
+              {
+                icon: Package,
+                label: "পরিমাণ",
+                value: `${tx.quantity ? digits(tx.quantity, bengali) : ""}${tx.unit ? ` ${tx.unit}` : ""}`.trim(),
+              },
+            ]
+          : []),
+        ...(tx.familyMember
+          ? [{ icon: Users, label: "সদস্য", value: tx.familyMember }]
+          : []),
         { icon: Wallet, label: "অ্যাকাউন্ট", value: tx.account || "ক্যাশ" },
         {
           icon: CalendarDays,
