@@ -1,0 +1,33 @@
+name: Code Quality
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Informational only while the existing codebase is being cleaned up.
+      - name: Knip (unused files, exports, dependencies)
+        run: pnpm lint:knip
+        continue-on-error: true
+
+      - name: Biome (lint)
+        run: pnpm lint:biome
+        continue-on-error: true

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "next.config.mjs",
+    "middleware.{ts,tsx,js,mjs}",
+    "app/**/{page,layout,route,loading,error,not-found,template,default}.{ts,tsx,js,jsx}",
+    "scripts/**/*.cjs"
+  ],
+  "project": ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+  "ignore": [
+    ".next/**",
+    "out/**",
+    "android/**",
+    "public/**",
+    "node_modules/**",
+    "**/*.d.ts"
+  ],
+  "ignoreDependencies": ["@next/swc-wasm-nodejs"]
+}

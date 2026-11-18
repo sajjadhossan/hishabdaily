@@ -564,12 +564,15 @@ export function Avatar({
 export function Logo({ size = 36, withText = false }: { size?: number; withText?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <span
-        className="grid place-items-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 font-bold text-white shadow-sm"
-        style={{ width: size, height: size, fontSize: size * 0.52 }}
-      >
-        ৳
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/icon.svg"
+        alt="হিসাব"
+        width={size}
+        height={size}
+        className="shrink-0"
+        style={{ width: size, height: size }}
+      />
       {withText ? (
         <span className="flex flex-col leading-none">
           <span className="text-[17px] font-extrabold tracking-tight text-ink">হিসাব</span>

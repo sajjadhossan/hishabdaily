@@ -1,6 +1,6 @@
 {
   "name": "hishabdaily",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "private": true,
   "description": "হিসাব — ব্যক্তিগত আয়-ব্যয়, দেনা-পাওনা ও নিয়মিত কেনাকাটার ট্র্যাকার",
   "scripts": {
@@ -12,6 +12,9 @@
     "build:pages": "node scripts/copy-import-assets.cjs && STATIC_EXPORT=1 node scripts/next.cjs build",
     "deploy:pages": "node scripts/deploy-pages.cjs",
     "lint": "next lint",
+    "lint:knip": "node scripts/knip.cjs",
+    "lint:biome": "biome lint .",
+    "lint:all": "pnpm lint:knip && pnpm lint:biome",
     "predev": "node scripts/copy-import-assets.cjs",
     "prebuild": "node scripts/copy-import-assets.cjs",
     "version:get": "node scripts/version.cjs get",
@@ -35,12 +38,14 @@
     "tesseract.js": "7.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.8",
     "@next/swc-wasm-nodejs": "15.5.28",
     "@types/node": "^22.10.0",
     "@types/papaparse": "5.3.16",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
+    "knip": "6.45.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"
