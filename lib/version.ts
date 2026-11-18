@@ -1,5 +1,5 @@
 /** scripts/version.cjs — একমাত্র ভার্সন-সূত্র version.json থেকে সিঙ্ক করা হয় */
-export const APP_VERSION = "1.1.0";
-export const BUILD_NUMBER = 13;
+export const APP_VERSION = "1.1.1";
+export const BUILD_NUMBER = 14;
 
 export const VERSION_LABEL = `v${APP_VERSION} (${BUILD_NUMBER})`;

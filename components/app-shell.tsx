@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <QuickAddContext.Provider value={openForm}>
-      <div className="min-h-screen bg-bg">
+      <div className="app-shell flex flex-col bg-bg">
         {/* ───── ডেস্কটপ সাইডবার ───── */}
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-surface lg:flex">
           <div className="px-5 py-5">
@@ -166,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         {/* ───── মোবাইল হেডার ───── */}
-        <header className="sticky top-0 z-30 border-b border-line glass lg:hidden">
+        <header className="z-30 shrink-0 border-b border-line glass lg:hidden">
           <div className="flex h-14 items-center justify-between px-4">
             <Link href="/dashboard" aria-label="হোম">
               <Logo size={30} withText />
@@ -193,7 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="lg:pl-64">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:pl-64">
           <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">
             <UpdateBanner />
             {isLocal ? (
