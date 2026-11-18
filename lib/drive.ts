@@ -228,3 +228,33 @@ export async function downloadBackup(token: string, fileId: string): Promise<str
 export async function deleteBackup(token: string, fileId: string): Promise<void> {
   await driveFetch(`/drive/v3/files/${fileId}`, token, { method: "DELETE" });
 }
+
+/**
+ * শেষ `keep`টি ব্যাকআপ রেখে তার চেয়ে পুরোনোগুলো Drive থেকে মুছে দেয়।
+ * নতুনগুলো createdTime অনুযায়ী প্রথমে থাকে, তাই শুধু বাকিদের ডিলিট করি।
+ */
+export async function pruneBackups(token: string, keep = 5): Promise<number> {
+  const folderId = await ensureFolder(token);
+  const q = encodeURIComponent(
+    folderId
+      ? `'${folderId}' in parents and trashed=false`
+      : `name contains 'hishab-backup' and trashed=false`,
+  );
+  const res = await driveFetch(
+    `/drive/v3/files?q=${q}&orderBy=createdTime desc,name desc&pageSize=1000&fields=files(id,name,createdTime)&spaces=drive`,
+    token,
+  );
+  const body = (await res.json()) as { files?: DriveFile[] };
+  const files = (body.files || []).filter((f) => f.name.endsWith(".json"));
+  const old = files.slice(keep);
+  let deleted = 0;
+  for (const file of old) {
+    try {
+      await deleteBackup(token, file.id);
+      deleted += 1;
+    } catch (err) {
+      console.warn("old backup delete failed", err);
+    }
+  }
+  return deleted;
+}

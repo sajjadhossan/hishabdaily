@@ -64,11 +64,13 @@ import {
   driveErrorText,
   driveFolderUrl,
   getDriveToken,
+  hasDriveToken,
   listBackups,
+  pruneBackups,
   uploadBackup,
   type DriveFile,
 } from "@/lib/drive";
-import { getDriveAccessToken } from "@/lib/google";
+import { getDriveAccessToken, hasCachedDriveToken } from "@/lib/google";
 import { isNativeApk } from "@/lib/updater";
 import {
   backupFileName,
@@ -150,6 +152,7 @@ export default function SettingsPage() {
   const [driveTestBusy, setDriveTestBusy] = useState(false);
   const [driveFolder, setDriveFolder] = useState<string | null>(null);
   const [driveBackupCount, setDriveBackupCount] = useState<number | null>(null);
+  const [driveConnected, setDriveConnected] = useState(false);
   const [pendingPayload, setPendingPayload] = useState<Partial<AppData> | null>(null);
   const [pendingSource, setPendingSource] = useState("");
   const [clearOpen, setClearOpen] = useState(false);
@@ -162,6 +165,14 @@ export default function SettingsPage() {
     setCustomConfigured(!!configFromStorage());
     setBudget(settings.monthlyBudget ? String(settings.monthlyBudget) : "");
   }, [settings.monthlyBudget]);
+
+  // Drive সংযোগের অবস্থা মিনিটে একবার রিফ্রেশ করি (টোকেনের মেয়াদ শেষ হতে পারে)।
+  useEffect(() => {
+    const check = () => setDriveConnected(hasCachedDriveToken() || hasDriveToken());
+    check();
+    const timer = window.setInterval(check, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const bengali = settings.bengaliNumerals;
   const currency = settings.currency;
@@ -208,9 +219,13 @@ export default function SettingsPage() {
     try {
       const token = await requireToken();
       if (!token) return;
+      await pruneBackups(token, 5);
       const list = await listBackups(token);
       setDriveBackupCount(list.length);
       setDriveFolder(driveFolderUrl());
+      setDriveConnected(true);
+      // Drive অনুমতি পাওয়া মাত্রই অটো ব্যাকআপ চালু — আলাদা করে টগল খুঁজতে হবে না
+      if (!settings.autoBackup) await updateSettings({ autoBackup: true });
       toast(`Drive সংযুক্ত ✅ · ${list.length}টি ব্যাকআপ পাওয়া গেছে`);
     } catch (err) {
       toast(driveErrorText(err), "error");
@@ -233,8 +248,15 @@ export default function SettingsPage() {
         backupFileName(user?.name),
         JSON.stringify(payload, null, 2),
       );
-      await updateSettings({ lastBackupAt: Date.now() });
-      toast(`ব্যাকআপ সম্পন্ন হয়েছে · ${file.name}`);
+      // নতুন ব্যাকআপ যোগ হওয়ার পর শেষ ৫টি ছাড়া পুরোনোগুলো সরাই
+      await pruneBackups(token, 5);
+      setDriveBackupCount((await listBackups(token)).length);
+      setDriveConnected(true);
+      await updateSettings({
+        lastBackupAt: Date.now(),
+        ...(settings.autoBackup ? {} : { autoBackup: true }),
+      });
+      toast(`ব্যাকআপ সম্পন্ন হয়েছে · ${file.name} · শেষ ৫টি রাখা হয়েছে`);
     } catch (err) {
       toast(driveErrorText(err) || "ব্যাকআপ ব্যর্থ হয়েছে", "error");
     } finally {
@@ -784,6 +806,45 @@ export default function SettingsPage() {
       <section className="mt-6" id="backup">
         <SectionTitle title="Google Drive ব্যাকআপ" subtitle="সব তথ্য নিরাপদে আপনার ড্রাইভে" />
         <Card className="overflow-hidden">
+          {/* ───── সিঙ্ক অবস্থা — লগইন করলেই বোঝা যাবে ───── */}
+          <div className="space-y-2 border-b border-line bg-surface-2/40 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[12px] font-bold text-ink">সিঙ্ক অবস্থা</p>
+              <p className="text-[10.5px] text-muted">লগইন করলেই দেখতে পাবেন</p>
+            </div>
+            <SyncRow
+              ok={!isLocal && synced}
+              warn={!isLocal && !synced}
+              label="ফায়ারস্টোর — লাইভ সিঙ্ক"
+              detail={
+                isLocal
+                  ? "ডেমো / লোকাল মোড — ক্লাউড সিঙ্ক নেই"
+                  : synced
+                    ? "ওয়েব ও এপিক একে অপরের সাথে সিঙ্ক হচ্ছে (একই Google অ্যাকাউন্ট)"
+                    : "অফলাইন — সংযোগ ফিরলে নিজে থেকেই সিঙ্ক হবে"
+              }
+            />
+            <SyncRow
+              ok={driveConnected}
+              warn={false}
+              label="গুগল ড্রাইভ — ব্যাকআপ"
+              detail={
+                driveConnected
+                  ? `সংযুক্ত · Drive-এ ${driveBackupCount ?? "শেষ"}টি ব্যাকআপ`
+                  : "সংযুক্ত নয় — নিচের “Drive সংযোগ পরীক্ষা” বাটনে চাপুন"
+              }
+            />
+            <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
+              <p className="text-[11.5px] font-bold text-ink">
+                অটো ব্যাকআপ: {settings.autoBackup ? "চালু ✅" : "বন্ধ"}
+              </p>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted">
+                অ্যাপ খোলার সাথে সাথে + প্রতি ১০ মিনিটে ব্যাকআপ নেওয়া হয়। Drive-এ শেষ ৫টি
+                ফাইল রেখে তার পুরোনোগুলো স্বয়ংক্রিয়ভাবে মুছে দেওয়া হয়।
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-start gap-3 border-b border-line p-4">
             <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand">
               <Cloud className="size-5" />
@@ -856,7 +917,7 @@ export default function SettingsPage() {
               checked={settings.autoBackup}
               onChange={(autoBackup) => updateSettings({ autoBackup })}
               label="অটো ব্যাকআপ"
-              description="দিনে একবার, অ্যাপ খোলার সময় নিজে থেকেই ব্যাকআপ হবে"
+              description="অ্যাপ খোলার সাথে সাথে + প্রতি ১০ মিনিটে · Drive-এ শেষ ৫টি থাকবে"
             />
           </div>
         </Card>
@@ -1362,6 +1423,38 @@ export default function SettingsPage() {
       <p className="mt-6 text-center text-[10.5px] tabular text-muted">
         হিসাব · {VERSION_LABEL}
       </p>
+    </div>
+  );
+}
+
+/** সেটিংসে দুটো সিস্টেমের অবস্থা পরিচ্ছন্নভাবে দেখানোর ছোট সারি */
+function SyncRow({
+  ok,
+  warn,
+  label,
+  detail,
+}: {
+  ok: boolean;
+  warn?: boolean;
+  label: string;
+  detail: string;
+}) {
+  const good = ok;
+  const bad = !ok && warn;
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border border-line bg-surface p-2.5">
+      <span
+        className={cn(
+          "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full",
+          good ? "bg-brand-soft text-brand" : bad ? "bg-warn/10 text-warn" : "bg-surface-2 text-muted",
+        )}
+      >
+        {good ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11.5px] font-bold text-ink">{label}</p>
+        <p className="text-[10.5px] leading-relaxed text-muted">{detail}</p>
+      </div>
     </div>
   );
 }
