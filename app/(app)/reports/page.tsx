@@ -5,10 +5,13 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Download,
+  FileBarChart2,
+  LayoutDashboard,
   PiggyBank,
   ReceiptText,
   TrendingUp,
 } from "lucide-react";
+import { ReportBuilder } from "@/components/report-builder";
 import { MonthSwitcher, PageHeader } from "@/components/app-shell";
 import { MonthlyBars } from "@/components/charts";
 import { Button, Card, Progress, SectionTitle, Segmented } from "@/components/ui";
@@ -30,10 +33,12 @@ import { csvFileName, transactionsToCsv } from "@/lib/backup";
 import { useToast } from "@/components/ui";
 
 type Mode = "month" | "year";
+type View = "overview" | "builder";
 
 export default function ReportsPage() {
   const { transactions, settings } = useData();
   const toast = useToast();
+  const [view, setView] = useState<View>("overview");
   const [mode, setMode] = useState<Mode>("month");
   const [month, setMonth] = useState(currentMonth());
   const [year, setYear] = useState(new Date().getFullYear());
@@ -107,14 +112,38 @@ export default function ReportsPage() {
     <div>
       <PageHeader
         title="রিপোর্ট ও বিশ্লেষণ"
-        subtitle={mode === "month" ? monthLabel(month, bengali) : `${bengali ? toBengaliDigits(year) : year} সাল`}
+        subtitle={
+          view === "builder"
+            ? "সব খরচের হিসাব · Excel ও PDF এক্সপোর্ট"
+            : mode === "month"
+              ? monthLabel(month, bengali)
+              : `${bengali ? toBengaliDigits(year) : year} সাল`
+        }
         action={
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download className="size-4" /> CSV
-          </Button>
+          view === "overview" ? (
+            <Button variant="outline" size="sm" onClick={exportCsv}>
+              <Download className="size-4" /> CSV
+            </Button>
+          ) : null
         }
       />
 
+      <div className="mb-4">
+        <Segmented<View>
+          className="w-full sm:w-[320px]"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "overview", label: "ওভারভিউ", icon: <LayoutDashboard className="size-3.5" /> },
+            { value: "builder", label: "রিপোর্ট বানান", icon: <FileBarChart2 className="size-3.5" /> },
+          ]}
+        />
+      </div>
+
+      {view === "builder" ? (
+        <ReportBuilder />
+      ) : (
+        <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Segmented
           className="w-full sm:w-[220px]"
@@ -340,6 +369,8 @@ export default function ReportsPage() {
       <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[10.5px] text-muted">
         <ReceiptText className="size-3" /> রিপোর্ট তৈরি হয়েছে {formatDate(todayISO(), bengali, true)} তারিখে
       </p>
+        </>
+      )}
     </div>
   );
 }

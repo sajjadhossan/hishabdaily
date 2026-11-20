@@ -1,6 +1,6 @@
 {
   "name": "hishabdaily",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "private": true,
   "description": "হিসাব — ব্যক্তিগত আয়-ব্যয়, দেনা-পাওনা ও নিয়মিত কেনাকাটার ট্র্যাকার",
   "scripts": {
@@ -28,6 +28,8 @@
     "@capacitor/core": "8.6.2",
     "date-fns": "^4.1.0",
     "firebase": "^11.10.0",
+    "html2canvas": "1.4.1",
+    "jspdf": "3.0.1",
     "lucide-react": "^0.470.0",
     "next": "15.5.28",
     "papaparse": "5.7.1",
