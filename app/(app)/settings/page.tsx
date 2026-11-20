@@ -55,7 +55,6 @@ import {
   activeConfig,
   configFromEnv,
   configFromStorage,
-  googleClientId,
   saveConfigToStorage,
 } from "@/lib/firebase";
 import {
@@ -63,8 +62,6 @@ import {
   downloadBackup,
   driveErrorText,
   driveFolderUrl,
-  getDriveToken,
-  hasDriveToken,
   listBackups,
   pruneBackups,
   uploadBackup,
@@ -140,7 +137,6 @@ export default function SettingsPage() {
   const [accountInput, setAccountInput] = useState("");
   const [catToDelete, setCatToDelete] = useState<Category | null>(null);
 
-  const [clientId, setClientId] = useState<string | null>(null);
   const [envConfigured, setEnvConfigured] = useState(false);
   const [customConfigured, setCustomConfigured] = useState(false);
 
@@ -160,7 +156,6 @@ export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setClientId(googleClientId());
     setEnvConfigured(!!configFromEnv());
     setCustomConfigured(!!configFromStorage());
     setBudget(settings.monthlyBudget ? String(settings.monthlyBudget) : "");
@@ -168,7 +163,7 @@ export default function SettingsPage() {
 
   // Drive সংযোগের অবস্থা মিনিটে একবার রিফ্রেশ করি (টোকেনের মেয়াদ শেষ হতে পারে)।
   useEffect(() => {
-    const check = () => setDriveConnected(hasCachedDriveToken() || hasDriveToken());
+    const check = () => setDriveConnected(hasCachedDriveToken());
     check();
     const timer = window.setInterval(check, 60 * 1000);
     return () => window.clearInterval(timer);
@@ -179,39 +174,23 @@ export default function SettingsPage() {
   const cats = settings.categories.filter((c) => c.type === catType || (catType === "expense" && c.type === "both"));
 
   async function requireToken(interactive = true): Promise<string | null> {
-    // APK: Drive অনুমতি নেটিভ ফ্লোতে নেওয়া হয়। ব্রাউজার/GIS পদ্ধতিতে যাই না।
-    if (isNativeApk()) {
-      try {
-        const token = await getDriveAccessToken({ interactive });
-        if (token) return token;
-        if (interactive) toast("Google Drive অনুমতি পাওয়া যায়নি। আবার চেষ্টা করুন।", "error");
-      } catch (err) {
-        if (interactive) toast(driveErrorText(err), "error");
+    // APK-তে নেটিভ Google অনুমতি; ওয়েবে Firebase Google সাইন-ইনের টোকেন।
+    // কোনো পদ্ধতিতেই ব্রাউজারের GIS Client ID fallback ব্যবহার করি না।
+    try {
+      const token = await getDriveAccessToken({ interactive });
+      if (token) return token;
+      if (interactive) {
+        toast(
+          isNativeApk()
+            ? "Google Drive অনুমতি পাওয়া যায়নি। আবার চেষ্টা করুন।"
+            : "Drive ব্যাকআপের জন্য Google দিয়ে সাইন ইন করুন, তারপর আবার চেষ্টা করুন।",
+          "error",
+        );
       }
-      return null;
-    }
-
-    // ১) ওয়েব: Google দিয়ে সাইন ইন করা থাকলে সেখান থেকেই Drive টোকেন
-    try {
-      const direct = await getDriveAccessToken({ interactive });
-      if (direct) return direct;
     } catch (err) {
       if (interactive) toast(driveErrorText(err), "error");
-      if (!clientId) return null;
     }
-
-    // ২) পুরোনো পদ্ধতি: আলাদা Google Client ID (ঐচ্ছিক)
-    if (!clientId) {
-      if (interactive)
-        toast("ব্যাকআপের জন্য Google দিয়ে সাইন ইন করুন — অথবা সেটআপে Google Client ID দিন", "error");
-      return null;
-    }
-    try {
-      return await getDriveToken(clientId);
-    } catch (err) {
-      if (interactive) toast(driveErrorText(err), "error");
-      return null;
-    }
+    return null;
   }
 
   async function testDrive() {
@@ -865,11 +844,11 @@ export default function SettingsPage() {
                   Google অ্যাকাউন্ট: {user.email} — ব্যাকআপ এই Drive-এ যাবে
                 </p>
               ) : null}
-              {!clientId && !user?.google ? (
+              {!user?.google ? (
                 <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warn/10 px-2.5 py-2 text-[10.5px] font-medium leading-relaxed text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="mt-0.5 size-3 shrink-0" />
                   Drive ব্যাকআপের জন্য Google দিয়ে সাইন ইন করুন (লগআউট করে “Google দিয়ে
-                  চালিয়ে যান”) — তাহলে আলাদা Client ID লাগবে না।
+                  চালিয়ে যান”)।
                 </p>
               ) : null}
             </div>

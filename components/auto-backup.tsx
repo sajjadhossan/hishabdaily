@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useData } from "@/lib/data";
-import { googleClientId } from "@/lib/firebase";
-import { getDriveTokenSilent, pruneBackups, uploadBackup } from "@/lib/drive";
+import { pruneBackups, uploadBackup } from "@/lib/drive";
 import { getDriveAccessToken } from "@/lib/google";
 import { backupFileName, buildBackup } from "@/lib/backup";
 import { useToast } from "./ui";
@@ -42,10 +41,8 @@ export function AutoBackup() {
     if (running.current) return;
     running.current = true;
     try {
-      // Google সাইন-ইনের টোকেন থাকলে সেটাই, নইলে পুরোনো Client ID পদ্ধতি
-      const token =
-        (await getDriveAccessToken()) ||
-        (googleClientId() ? await getDriveTokenSilent(googleClientId()!) : null);
+      // Google সাইন-ইনের মাধ্যমে পাওয়া Drive টোকেনই ব্যবহার করি।
+      const token = await getDriveAccessToken();
       if (!token) {
         if (!warned.current) {
           warned.current = true;
