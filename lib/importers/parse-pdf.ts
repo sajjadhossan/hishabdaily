@@ -16,15 +16,28 @@ interface TextLikeItem {
   transform?: number[];
 }
 
-/** pdfjs-এর text items-কে y-অনুযায়ী লাইনে সাজায় */
+/** item-এর শুরুতে বসা ভাঙা 'ি' (িচ → চি) — শুধু item-এর প্রথম অবস্থানে প্রয়োগ */
+const LEADING_I_RE = /^\u09bf([\u0995-\u09b9\u09dc-\u09df])/;
+
+/**
+ * pdfjs-এর text items-কে y-অনুযায়ী লাইনে সাজায়।
+ *
+ * Chromium/Skia print-to-PDF-এ বাংলার প্রতিটি glyph-cluster আলাদা item হয়
+ * আর শব্দের মাঝের space-ও একটা আলাদা item (`str === " "`) হিসেবে আসে।
+ * আগে ওই space item-গুলো ফেলে দিয়ে সব item-এর মাঝে নিজে " " দেওয়া হতো —
+ * ফলে "যাতায়াত ও ভাড়া" লেখাটি "যা তা য়া ত ও ভা ড়া" হয়ে যেতো। এখন আসল
+ * space item-গুলো রেখে কোনো joiner ছাড়াই x-অনুযায়ী জোড়া লাগাই।
+ */
 function itemsToText(items: TextLikeItem[]): string {
   const lines = new Map<number, Array<{ x: number; str: string }>>();
   for (const item of items) {
-    if (typeof item.str !== "string" || !item.str.trim()) continue;
+    if (typeof item.str !== "string") continue;
     const y = Math.round(item.transform?.[5] ?? 0);
     const x = item.transform?.[4] ?? 0;
     const arr = lines.get(y) ?? [];
-    arr.push({ x, str: item.str });
+    // Skia আগে-বসা 'ি' কে ব্যঞ্জনের আগে লেখে (িচ) — item-স্তরেই ঠিক করি,
+    // যাতে পরের item-এর 'ি'-ও নিজের জায়গায় ফিরে যায় (িচ + িক → চি + কি)।
+    arr.push({ x, str: item.str.replace(LEADING_I_RE, "$1\u09bf") });
     lines.set(y, arr);
   }
   return [...lines.entries()]
@@ -33,8 +46,8 @@ function itemsToText(items: TextLikeItem[]): string {
       parts
         .sort((a, b) => a.x - b.x)
         .map((p) => p.str)
-        .join(" ")
-        .replace(/\s+/g, " ")
+        .join("")
+        .replace(/[ \t]+/g, " ")
         .trim(),
     )
     .filter(Boolean)

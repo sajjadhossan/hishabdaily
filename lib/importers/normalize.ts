@@ -16,7 +16,9 @@ export function toAsciiDigits(value: string): string {
 }
 
 export function normalizeText(value: string): string {
-  return toAsciiDigits(value).replace(/\s+/g, " ").trim();
+  // Skia/PDF-র ভাঙা ToUnicode ম্যাপে কিছু glyph U+0000 হয়ে যায় — সেটা
+  // ইনভিজিবল থেকে যায়, তাই সব ইনপুট থেকে কন্ট্রোল চিহ্ন বাদ দিই।
+  return stripControlChars(toAsciiDigits(value)).replace(/\s+/g, " ").trim();
 }
 
 export function fold(value: string): string {
@@ -256,8 +258,17 @@ export function repairBengaliFragments(value: string): string {
     if (next === out) break;
     out = next;
   }
-  // আগে-বসা 'ি' চিহ্নটিকে ব্যঞ্জনের পরে নিয়ে যাই: িচ → চি
-  out = out.replace(/\u09bf([\u0995-\u09b9\u09dc-\u09df])/g, "$1\u09bf");
+  // শুধু আগে-বসা 'ি' সরাই (িচ → চি) — অর্থাৎ যার আগে ব্যঞ্জন নেই।
+  // আগে সব 'ি' সরানো হতো, ফলে ঠিক বাংলা "মদিনা" → "মদনিা" হয়ে যেতো।
+  // এক পাসে সব 'ি' সরে না (পাশাপাশি দুটো ভাঙা fragment থাকলে) — কয়েক পাস চালাই।
+  for (let pass = 0; pass < 4; pass++) {
+    const next = out.replace(
+      /(?<![\u0995-\u09b9\u09dc-\u09df])\u09bf([\u0995-\u09b9\u09dc-\u09df])/g,
+      "$1\u09bf",
+    );
+    if (next === out) break;
+    out = next;
+  }
   return out.replace(/[ \t]+/g, " ").trim();
 }
 
