@@ -64,7 +64,7 @@ export type DebtInput = Omit<Debt, "id" | "createdAt" | "contactName" | "txId"> 
   contactName?: string;
   addToCash?: boolean;
 };
-export type FolderInput = Pick<Folder, "name" | "emoji" | "color">;
+export type FolderInput = Pick<Folder, "name" | "emoji" | "color" | "parentId">;
 
 interface DataApi extends AppData {
   ready: boolean;
@@ -903,6 +903,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         name: input.name.trim(),
         emoji: input.emoji || "📁",
         color: input.color || "#0C906A",
+        ...(input.parentId ? { parentId: input.parentId } : {}),
         createdAt: Date.now(),
         updatedBy: user?.uid,
       };

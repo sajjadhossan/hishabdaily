@@ -1,3 +1,4 @@
+import { findDeclaredTotal } from "./normalize";
 import { rowsFromFreeText } from "./parse-tabular";
 import type { ParsedRow, ProgressCallback } from "./types";
 
@@ -6,6 +7,8 @@ export interface PdfParseResult {
   text: string;
   pages: number;
   engine: "text" | "ocr";
+  /** PDF-এ নিজে লেখা "মোট দৈনিক খরচ : ৳ …" — মিল যাচাইয়ের জন্য */
+  declaredTotal?: number;
 }
 
 interface TextLikeItem {
@@ -101,7 +104,11 @@ export async function parsePdfFile(
   }
 
   onProgress?.({ phase: "লেনদেন শনাক্ত করছি…", percent: 95 });
-  const rows = rowsFromFreeText(combined, sourceName);
+  const declaredTotal = findDeclaredTotal(combined) ?? undefined;
+  const pdfOpts = { requireDate: true, sourceType: engine === "ocr" ? "ocr" as const : "pdf" as const };
+  let rows = rowsFromFreeText(combined, sourceName, pdfOpts);
+  // OCR-এ তারিখ ভুল পড়া হলে সব রো হারানোর চেয়ে ফ্যালব্যাক ব্যবহার করি
+  if (!rows.length) rows = rowsFromFreeText(combined, sourceName, { sourceType: pdfOpts.sourceType });
   await doc.destroy();
-  return { rows, text: combined, pages: doc.numPages, engine };
+  return { rows, text: combined, pages: doc.numPages, engine, declaredTotal };
 }

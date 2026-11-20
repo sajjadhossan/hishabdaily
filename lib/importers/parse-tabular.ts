@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { canonicalPerson, isPersonName } from "./canonical";
 import {
   categoryConfidence,
   findAmounts,
@@ -87,18 +88,34 @@ interface HeaderMap {
   balance: number;
   category: number;
   type: number;
+  person: number;
+  quantity: number;
+  unit: number;
+  event: number;
+  note: number;
+  folder: number;
+  subFolder: number;
+  serial: number;
   score: number;
 }
 
 const HEADER_WORDS = {
   date: ["date", "txn date", "transaction date", "value date", "posting date", "time", "তারিখ", "দিন", "dt"],
-  description: ["description", "details", "particulars", "narration", "memo", "remarks", "particular", "বিবরণ", "বর্ণনা", "নাম", "খাত"],
+  description: ["description", "item description", "details", "particulars", "narration", "memo", "particular", "বিবরণ", "বর্ণনা", "নাম", "আইটেম"],
   amount: ["amount", "amt", "amount (bdt)", "টাকা", "অঙ্ক", "total", "value"],
   debit: ["debit", "dr", "dr.", "withdrawal", "withdraw", "খরচ", "ব্যয়", "ডেবিট", "debit(bdt)"],
   credit: ["credit", "cr", "cr.", "deposit", "জমা", "ক্রেডিট", "income"],
   balance: ["balance", "bal", "ব্যালেন্স", "অবশিষ্ট", "closing"],
   category: ["category", "ক্যাটাগরি", "খাত", "ধরন"],
-  type: ["type", "kind", "dr/cr", "ধরন", "টাইপ"],
+  type: ["type", "kind", "dr/cr", "টাইপ"],
+  person: ["person", "family member", "familymember", "member", "পার্সন", "ব্যক্তি", "সদস্য"],
+  quantity: ["quantity", "qty", "পরিমাণ"],
+  unit: ["unit", "ইউনিট"],
+  event: ["event", "event name", "অনুষ্ঠান", "ইভেন্ট"],
+  note: ["notes", "note", "remarks", "মন্তব্য", "নোট"],
+  folder: ["folder", "ফোল্ডার"],
+  subFolder: ["sub folder", "subfolder", "sub folder", "সাব ফোল্ডার"],
+  serial: ["sl", "sl.", "sr", "sr.", "ক্রম", "নং"],
 };
 
 function detectHeader(rows: TableParseResult["rows"]): HeaderMap | null {
@@ -110,7 +127,11 @@ function detectHeader(rows: TableParseResult["rows"]): HeaderMap | null {
     cells.forEach((cell, ci) => {
       (Object.keys(HEADER_WORDS) as Array<keyof typeof HEADER_WORDS>).forEach((key) => {
         if (found.has(key)) return;
-        if (HEADER_WORDS[key].some((word) => cell === word || cell.includes(word))) found.set(key, ci);
+        // "cr"/"dr"/"sl" ছোট শব্দ — ভেতরে মিলালে "Item Description"-এ cr ধরা যায়।
+        // তাই ছোট শব্দ শুধু হুবহু, বড় শব্দই ভেতরে খুঁজি।
+        if (HEADER_WORDS[key].some((word) => cell === word || (word.length >= 4 && cell.includes(word)))) {
+          found.set(key, ci);
+        }
       });
     });
     const core = ["date", "description", "amount", "debit", "credit"].filter((k) => found.has(k as keyof typeof HEADER_WORDS)).length;
@@ -125,6 +146,14 @@ function detectHeader(rows: TableParseResult["rows"]): HeaderMap | null {
       balance: found.get("balance") ?? -1,
       category: found.get("category") ?? -1,
       type: found.get("type") ?? -1,
+      person: found.get("person") ?? -1,
+      quantity: found.get("quantity") ?? -1,
+      unit: found.get("unit") ?? -1,
+      event: found.get("event") ?? -1,
+      note: found.get("note") ?? -1,
+      folder: found.get("folder") ?? -1,
+      subFolder: found.get("subFolder") ?? -1,
+      serial: found.get("serial") ?? -1,
       score: core,
     };
     if (!best || map.score > best.score) best = map;
@@ -146,7 +175,7 @@ function cleanDescription(cells: string[], skip: number[]): string {
     text = text
       .replace(/\b\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}\b/g, " ")
       .replace(/(?:৳|টাকা|tk\.?|bdt|rs\.?)\s*[+-]?\d[\d,]*(?:\.\d{1,2})?/gi, " ")
-      .replace(/(?:^|\s)[+-]?\d[\d,]*(?:\.\d{1,2})?(?:\s*\/\-\s*)?(?=\s|$)/g, " ")
+      .replace(/(?:^|\s)[+-]?\d[\d,]*(?:\.\d{1,2})?(?=\s|$)/g, " ")
       .replace(/\s+(?:৳|টাকা|tk|bdt|rs)\.?\s*$/i, " ")
       .replace(/\s+/g, " ")
       .trim();
@@ -216,6 +245,11 @@ export function rowsFromTable(table: TableParseResult, sourceName: string): Pars
 
     const explicitType = header ? cellAt(cells, header.type) : "";
     const explicitCategory = header ? cellAt(cells, header.category) : "";
+    const rawPerson = header ? cellAt(cells, header.person) : "";
+    const person = isPersonName(rawPerson) ? canonicalPerson(rawPerson) : "";
+    const qtyRaw = header ? cellAt(cells, header.quantity) : "";
+    const quantity = qtyRaw && /\d/.test(qtyRaw) ? Number(qtyRaw.replace(/,/g, "")) || undefined : undefined;
+    const serial = header ? cellAt(cells, header.serial) : "";
     const kind = guessKind(`${description} ${explicitType} ${explicitCategory}`, explicitKind || explicitType, negative);
     const guessedCategory = guessCategory(`${description} ${explicitCategory}`, kind);
     const category = explicitCategory && !/^( category| ধরন)$/i.test(explicitCategory)
@@ -229,6 +263,7 @@ export function rowsFromTable(table: TableParseResult, sourceName: string): Pars
     if (category !== "অন্যান্য") confidence = Math.max(confidence, categoryConfidence(description, category));
     confidence = Math.min(0.98, confidence);
 
+    const isExcel = /\.(xlsx?|ods)$/i.test(sourceName);
     rows.push({
       id: hashString(`${sourceName}-${tableRow.index}-${joined}`) + `-${tableRow.index}`,
       date: date || "",
@@ -241,17 +276,41 @@ export function rowsFromTable(table: TableParseResult, sourceName: string): Pars
       raw: tableRow.cells.join(" | ").slice(0, 300),
       fingerprint: rowFingerprint(date || "", amount, description),
       selected: true,
+      sourceType: isExcel ? "excel" : "csv",
+      sourceId: serial || undefined,
+      sourceOrdinal: tableRow.index,
+      ...(person ? { person } : {}),
+      ...(quantity ? { quantity } : {}),
+      ...(header && cellAt(cells, header.unit) ? { unit: cellAt(cells, header.unit) } : {}),
+      ...(header && cellAt(cells, header.event) ? { event: cellAt(cells, header.event) } : {}),
+      ...(header && cellAt(cells, header.note) ? { note: cellAt(cells, header.note) } : {}),
+      ...(header && cellAt(cells, header.folder) ? { folder: cellAt(cells, header.folder) } : {}),
+      ...(header && cellAt(cells, header.subFolder) ? { subFolder: cellAt(cells, header.subFolder) } : {}),
     });
   }
   return rows;
 }
 
+/** নিশ্চিত হেডার/ফুটার — তারিখ থাকলেও কখনো লেনদেন নয় */
+const HARD_NOISE_RE = /generated\s*on|period\s*:|verified|smart\s*report|statement|daily\s*expense|পৃষ্ঠা|page\s*\d|হিসাব\s*-?\s*কিতাব|hisabkitab|©|all\s*rights/i;
+/** সারাংশের শব্দ — শুধু তারিখ না থাকলেই বাদ দিই (মোটরসাইকেল/Total Nutrition রাখতে) */
+const SOFT_NOISE_RE = /তারিখ|খাত|আইটেম|অ্যাকাউন্ট|মোট|টোটাল|সাবটোটাল|total|subtotal|grand\s*total|balance/i;
+
 /** PDF/OCR-এর মতো ফ্রি-টেক্সট থেকে লাইন ধরে লেনদেন বানায় */
-export function rowsFromFreeText(text: string, sourceName: string): ParsedRow[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => normalizeText(line))
-    .filter((line) => line.length > 6 && /\d/.test(line));
+export function rowsFromFreeText(
+  text: string,
+  sourceName: string,
+  opts?: { requireDate?: boolean; sourceType?: "pdf" | "ocr" | "text" },
+): ParsedRow[] {
+  const rawLines = text.split(/\r?\n/).map((line) => normalizeText(line));
+  const lines = rawLines.filter((line) => {
+    if (line.length <= 6 || !/\d/.test(line)) return false;
+    if (HARD_NOISE_RE.test(line)) return false;
+    // PDF-এ প্রতিটি আসল লাইনে তারিখ থাকে — তারিখ থাকলে সারাংশের শব্দ থাকলেও রাখি
+    if (parseDate(line)) return true;
+    if (opts?.requireDate) return false;
+    return !SOFT_NOISE_RE.test(line);
+  });
 
   const rows: ParsedRow[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -282,22 +341,26 @@ export function rowsFromFreeText(text: string, sourceName: string): ParsedRow[] 
       raw: line.slice(0, 300),
       fingerprint: rowFingerprint(date, hit.amount, description),
       selected: true,
+      sourceType: opts?.sourceType || "text",
+      sourceOrdinal: i,
     });
   }
   return rows;
 }
 
-/** ডুপ্লিকেট চেক — একই fingerprint আগের ইম্পোর্টে ছিল কি না */
+/**
+ * ডুপ্লিকেট চেক — শুধু আগের ইম্পোর্ট/বর্তমান ডেটার সাথে মিল বাদ দেয়।
+ * একই ফাইলে একই দিন একই টাকার দুটো আসল লেনদেন থাকতে পারে (যেমন দুবার auto-vara ৳৩০) —
+ * সেগুলো রেখে দিই, নাহলে আসল টাকা কমে যায়। ফাইলের হ্যাশ দিয়ে একই ফাইল আবার এড়ানো হয়।
+ */
 export function filterDuplicates(rows: ParsedRow[], knownFingerprints: Set<string>): { fresh: ParsedRow[]; duplicates: number } {
-  const seen = new Set<string>();
   const fresh: ParsedRow[] = [];
   let duplicates = 0;
   for (const row of rows) {
-    if (knownFingerprints.has(row.fingerprint) || seen.has(row.fingerprint)) {
+    if (knownFingerprints.has(row.fingerprint)) {
       duplicates++;
       continue;
     }
-    seen.add(row.fingerprint);
     fresh.push(row);
   }
   return { fresh, duplicates };

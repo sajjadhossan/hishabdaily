@@ -621,6 +621,7 @@ export default function SettingsPage() {
                   className="inline-flex items-center gap-1 rounded-full border border-line bg-surface py-1 pl-2.5 pr-1.5 text-[11.5px] font-semibold text-ink"
                 >
                   <span>{f.emoji}</span>
+                  {f.parentId ? <span className="text-muted">↳</span> : null}
                   {f.name}
                   <button
                     onClick={() => openFolderForm(f)}

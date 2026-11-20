@@ -26,7 +26,27 @@ export interface ParsedRow {
   /** date+amount+description থেকে বানানো ডুপ্লিকেট-চেক কী */
   fingerprint: string;
   selected: boolean;
+
+  /* ── বহু-ফরম্যাট মিলানোর জন্য ঐচ্ছিক তথ্য ── */
+  /** উৎস ফরম্যাট — কোনটা বিশ্বস্ত তা জানতে */
+  sourceType?: SourceKind;
+  /** ফাইলের নিজস্ব আইডি/সিরিয়াল (JSON id বা Excel SL) */
+  sourceId?: string;
+  /** ফাইলের ভেতরের ক্রম — একই তারিখ/টাকার ডুপ্লিকেট আলাদা রাখতে */
+  sourceOrdinal?: number;
+  /** familyMember / Person / member কলাম */
+  person?: string;
+  quantity?: number;
+  unit?: string;
+  folder?: string;
+  subFolder?: string;
+  event?: string;
+  note?: string;
+  /** JSON backup-এর type — daily / family / business */
+  recordType?: string;
 }
+
+export type SourceKind = "json" | "excel" | "csv" | "pdf" | "ocr" | "text";
 
 export interface ParseProgress {
   phase: string;
@@ -47,6 +67,8 @@ export interface ParsedBatch {
     pages?: number;
     engine?: string;
     skippedLines?: number;
+    /** PDF-এ লেখা মোট টাকা — শনাক্ত করা মোটের সাথে মিলানোর জন্য */
+    declaredTotal?: number;
   };
 }
 

@@ -18,6 +18,8 @@ export interface Folder {
   name: string;
   emoji: string;
   color: string;
+  /** সাব-ফোল্ডার হলে বাবার ফোল্ডারের আইডি (না দিলে টপ-লেভেল) */
+  parentId?: string;
   createdAt: number;
   updatedAt?: number;
   updatedBy?: string;

@@ -1,5 +1,4 @@
-import { parseBackup } from "@/lib/backup";
-import { normalizeText, rowFingerprint } from "./normalize";
+import { rowsFromJsonBackup } from "./adapters/json-backup";
 import { parsePdfFile } from "./parse-pdf";
 import {
   parseDelimited,
@@ -24,43 +23,6 @@ async function sha256(file: File): Promise<string> {
   }
 }
 
-/** নিজেদের অ্যাপের ব্যাকআপ JSON → ইম্পোর্ট রো */
-function rowsFromAppBackup(text: string, sourceName: string): ParsedRow[] {
-  const payload = parseBackup(text);
-  const rows: ParsedRow[] = [];
-  (payload.transactions || []).forEach((tx, i) => {
-    rows.push({
-      id: `backup-tx-${i}`,
-      date: /^\d{4}-\d{2}-\d{2}$/.test(tx.date) ? tx.date : "",
-      description: normalizeText(tx.note || tx.category || "লেনদেন").slice(0, 160),
-      amount: Math.abs(Number(tx.amount) || 0),
-      kind: tx.type === "income" ? "income" : "expense",
-      category: tx.category || "অন্যান্য",
-      account: tx.account || "",
-      confidence: 1,
-      raw: `JSON backup · ${tx.date}`,
-      fingerprint: rowFingerprint(tx.date, Math.abs(Number(tx.amount) || 0), tx.note || tx.category),
-      selected: true,
-    });
-  });
-  (payload.debts || []).forEach((debt, i) => {
-    rows.push({
-      id: `backup-debt-${i}`,
-      date: /^\d{4}-\d{2}-\d{2}$/.test(debt.date) ? debt.date : "",
-      description: normalizeText(debt.contactName || debt.note || "দেনা-পাওনা").slice(0, 160),
-      amount: Math.abs(Number(debt.amount) || 0),
-      kind: "debt",
-      debtDirection: debt.kind,
-      category: "দেনা-পাওনা",
-      confidence: 1,
-      raw: `JSON backup · ${debt.date}`,
-      fingerprint: rowFingerprint(debt.date, Math.abs(Number(debt.amount) || 0), debt.contactName || debt.note),
-      selected: true,
-    });
-  });
-  return rows;
-}
-
 export async function parseImportFile(
   file: File,
   onProgress?: ProgressCallback,
@@ -74,6 +36,7 @@ export async function parseImportFile(
   let pages: number | undefined;
   let engine: string | undefined;
   let skippedLines: number | undefined;
+  let declaredTotal: number | undefined;
 
   if (ext === "pdf" || file.type === "application/pdf") {
     const result = await parsePdfFile(file, sourceName, onProgress);
@@ -81,6 +44,7 @@ export async function parseImportFile(
     parser = result.engine === "ocr" ? "ocr" : "pdf";
     pages = result.pages;
     engine = result.engine === "ocr" ? "Tesseract (eng+ben)" : "PDF text layer";
+    declaredTotal = result.declaredTotal;
     if (result.engine === "ocr") warnings.push("স্ক্যান করা PDF — OCR দিয়ে পড়া হয়েছে, হিসাবগুলো একবার যাচাই করে নিন।");
   } else if (ext === "xlsx" || file.type.includes("spreadsheet")) {
     onProgress?.({ phase: "Excel ফাইল পড়ছি…", percent: 25 });
@@ -92,12 +56,18 @@ export async function parseImportFile(
     warnings.push("পুরোনো .xls ফাইল সমর্থিত নয় — ফাইলটিকে .xlsx বা .csv হিসেবে সেভ করে আবার দিন।");
   } else if (ext === "json" || file.type === "application/json") {
     onProgress?.({ phase: "ব্যাকআপ পড়ছি…", percent: 30 });
-    const text = (await file.text()).replace(/^\uFEFF/, "");
+    const text = await file.text();
     try {
-      rows = rowsFromAppBackup(text, sourceName);
+      const result = rowsFromJsonBackup(text, sourceName);
+      rows = result.rows;
+      if (result.excludedExpenses) {
+        warnings.push(
+          `${result.excludedExpenses} টি ব্যবসা/পরিবারের খরচ বাদ দেওয়া হয়েছে — এগুলো দৈনিক স্টেটমেন্টের অংশ নয়।`,
+        );
+      }
       if (!rows.length) warnings.push("JSON-এ কোনো লেনদেন পাওয়া যায়নি।");
-    } catch {
-      warnings.push("JSON ফাইলটি পড়া যায়নি।");
+    } catch (err) {
+      warnings.push(err instanceof Error ? err.message : "JSON ফাইলটি পড়া যায়নি।");
     }
   } else {
     onProgress?.({ phase: "ফাইল পড়ছি…", percent: 25 });
@@ -130,6 +100,6 @@ export async function parseImportFile(
     warnings,
     sourceName,
     fileHash,
-    meta: { parser, pages, engine, skippedLines },
+    meta: { parser, pages, engine, skippedLines, declaredTotal },
   };
 }
